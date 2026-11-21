@@ -75,6 +75,7 @@
   // =====================================================
   function empezar(m, idLocal) {
     mundo = m; jug = mundo.jugadores[idLocal];
+    DM.MapaUI.abierto = false;
     vista.ang = jug.ang; vista.pitch = 0;
     acum = 0; tFin = -1; aviso = null;
     prepararMotor(mundo);
@@ -141,8 +142,9 @@
   function procesarEntrada(eventos, clics) {
     const teclas = [];
     for (const ev of eventos) if (ev.indexOf('tecla:') === 0) teclas.push(ev.slice(6));
-    if (!audioListo && eventos.some(function (e) { return e === 'clic' || e === 'toque' || e === 'clicLibre' || e.indexOf('tecla:') === 0; })) {
-      audioListo = true; DM.Audio.iniciar(); musicaSegunEstado();
+    if (eventos.some(function (e) { return e === 'clic' || e === 'toque' || e === 'clicLibre' || e === 'disparo' || e.indexOf('tecla:') === 0; })) {
+      if (!audioListo) { audioListo = true; DM.Audio.iniciar(); musicaSegunEstado(); }
+      else DM.Audio.reintentar();
     }
     S.tactil = tactil();
     for (const k of teclas) {
@@ -178,7 +180,8 @@
       if (ev === 'rueda:1' || ev === 'boton:arma') toques.arma = 5;
       if (ev === 'rueda:-1') toques.arma = 6;
       if (ev === 'tecla:KeyG' || ev === 'lanzar' || ev === 'boton:lanzar') toques.lanzar = true;
-      if (ev === 'tecla:KeyQ' || ev === 'boton:lanzsel') toques.cambiaLanzable = true;
+      if (ev === 'tecla:KeyX' || ev === 'boton:lanzsel') toques.cambiaLanzable = true;
+      if (ev === 'tecla:KeyQ' || ev === 'boton:mapa') DM.MapaUI.abierto = !DM.MapaUI.abierto;
       if (ev === 'tecla:KeyR') toques.recargar = true;
       if (ev === 'boton:tab') DM.HUD.tablero = !DM.HUD.tablero;
     }
@@ -368,6 +371,7 @@
       if (estado !== 'resultados') {
         DM.ArmaFP.dibujar(ctx, jug, mundo.tiempo);
         DM.HUD.vista(ctx, jug, mundo, cam, estado === 'juego' ? aviso : null, t, dt, mundo.tiempo);
+        if (DM.MapaUI.abierto && estado === 'juego') DM.MapaUI.dibujar(ctx, mundo, jug, mundo.tiempo);
       }
       DM.HUD.barra(ctx, jug, mundo, mundo.tiempo);
       if (estado === 'juego' && !t && !E.bloqueado && !E.modoArrastre) DM.Texto.textoConCaja(ctx, 'CLIC PARA CAPTURAR EL MOUSE', C.ANCHO / 2, 150, PAL.amarilloClaro, PAL.amarillo);
@@ -431,6 +435,9 @@
     cuadro: cuadro
   };
 
+  // El audio se activa DENTRO del clic, toque o tecla (algunos navegadores lo exigen)
+  function gestoAudio() { DM.Audio.iniciar(); DM.Audio.desbloquear(); DM.Audio.reintentar(); }
+  ['pointerdown', 'touchend', 'keydown'].forEach(function (t) { window.addEventListener(t, gestoAudio, true); });
   window.addEventListener('beforeunload', function () { if (Red.rol) Red.salir(); });
   requestAnimationFrame(bucle);
 })();

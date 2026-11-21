@@ -24,7 +24,8 @@ El anfitrión (idealmente en un PC con buena conexión) crea la sala y comparte 
 | Mirar | Mouse | Deslizar en la mitad derecha |
 | Disparar / golpear | Clic izquierdo | DISPARO |
 | Armas | 1–4 y rueda | ARMA |
-| Lanzable / elegir lanzable | G o clic derecho / Q | LANZAR / ↻ |
+| Lanzable / elegir lanzable | G o clic derecho / X | LANZAR / ↻ |
+| Mapa | Q | MAPA |
 | Recargar | R (también automática) | automática |
 | Usar, leer, revivir | E (mantener para revivir o sostener un interruptor) | USAR |
 | Marcador | Tab | TAB |
@@ -33,7 +34,7 @@ El anfitrión (idealmente en un PC con buena conexión) crea la sala y comparte 
 
 ## Qué incluye
 
-- **Cooperativo** "Sector criogénico 4" (24×24, 2 pisos): 8 oleadas desde las cápsulas hacia la sala central, robot guardián al final, caer y revivir, estaciones de respaldo, 3 reimpresiones del equipo, premios en momentos clave y el desintegrador en la oleada final.
+- **Oleadas** "Sector 1 - Bloque criogénico" (solo o cooperativo) (24×24, 2 pisos): 8 oleadas desde las cápsulas hacia la sala central, robot guardián al final, caer y revivir, estaciones de respaldo, 3 reimpresiones del equipo, premios en momentos clave y el desintegrador en la oleada final.
 - **Versus** "Sala del reactor" (24×24, 2 pisos, simétrica): todos contra todos o por equipos Cian/Amarillo, fuego amigo (no / sí / solo explosivos), bajas y tiempo, muerte súbita, puntaje completo, disponibilidad de cada arma, objeto, premio, enemigo y trampa, configuraciones rápidas y una propia guardada.
 - **8 personajes** con puños, arma de contacto, arma a distancia y ventaja propias.
 - **7 armas pesadas + desintegrador**, **5 lanzables**, **5 enemigos**, **9 tipos de trampas** e interruptores de sala.
@@ -43,6 +44,8 @@ El anfitrión (idealmente en un PC con buena conexión) crea la sala y comparte 
 ## Música
 
 Copia los 4 MP3 (128 kbps) en `assets/musica/` con estos nombres: `monume.mp3`, `kulakovka.mp3`, `atlasaudio.mp3`, `alex-morgan.mp3`.
+Si prefieres dejar los nombres con que los descargaste, escríbelos en `js/datos/musica.js`. En **OPCIONES** el juego muestra qué archivo busca y si lo encontró.
+Para el APK, la música también tiene que quedar en `android/app/src/main/assets/public/assets/musica/` (ver `docs/ANDROID.md`).
 
 ## Arquitectura
 

@@ -1,5 +1,6 @@
 // =====================================================
-// Mapa cooperativo: SECTOR CRIOGENICO 4 (24×24, 2 pisos)
+// Mapa de oleadas: SECTOR 1 - BLOQUE CRIOGENICO (24×24, 2 pisos)
+// (se juega solo o en cooperativo con amigos)
 // Las oleadas salen de las cápsulas (Z) y convergen a la sala central.
 // La pasarela del piso 2 tiene rejillas sobre la sala central.
 //
@@ -19,7 +20,7 @@
 
   DM.mapas.sector4 = {
     id: 'sector4',
-    nombre: 'SECTOR CRIOGENICO 4',
+    nombre: 'SECTOR 1 - BLOQUE CRIOGENICO',
     modo: 'coop',
     inicio: { ang: -1.57 },
     baldosaSegura: 2,   // 0 cuadrado, 1 círculo, 2 triángulo (la pista está en un registro)

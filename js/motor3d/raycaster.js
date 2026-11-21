@@ -83,7 +83,7 @@
         if (techo[i] === ID.techo) techo[i] = ID.techoLuz;
         if (l.parpadea) parpadean.push(i);
       }
-      return { pared: pared, suelo: suelo, techo: techo, parpadean: parpadean };
+      return { pared: pared, suelo: suelo, techo: techo, parpadean: parpadean, visto: new Uint8Array(t) };
     });
   }
 
@@ -220,7 +220,8 @@
     if (sprites && sprites.length) dibujarSprites(cam, sprites, dirX, dirY, plX, plY, hor, true);
 
     // ---------- 3) Paredes, columna por columna ----------
-    const paredes = piso.paredes, idPared = R.pared;
+    const paredes = piso.paredes, idPared = R.pared, visto = R.visto;
+    visto[Math.floor(cy) * an + Math.floor(cx)] = 1;
     for (let x = 0; x < A; x++) {
       const camX = 2 * x / A - 1;
       const rdx = dirX + plX * camX, rdy = dirY + plY * camX;
@@ -237,6 +238,7 @@
         else { sdy += ddy; my += pasoY; lado = 1; }
         if (mx < 0 || my < 0 || mx >= an || my >= al) break;
         const ic = my * an + mx;
+        visto[ic] = 1;                       // mapa automático: casillas que el jugador ya vio
         const tipo = paredes[ic];
         if (!tipo) { prevPuerta = false; continue; }
 
@@ -413,6 +415,7 @@
     iniciar: iniciar,
     preparar: preparar,
     actualizarDinamico: actualizarDinamico,
+    visto: function (n) { return render3d[n] ? render3d[n].visto : null; },
     render: render,
     zbuf: zbuf
   };

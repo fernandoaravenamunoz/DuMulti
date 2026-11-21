@@ -45,8 +45,8 @@
     velo(ctx, 0.85);
     UI.titulo(ctx, 'JUGAR SOLO', 20);
     UI.inicio('solo');
-    UI.boton(ctx, 110, 60, 260, 22, 'COOPERATIVO: SECTOR CRIOGENICO 4', { accion: A.soloCoop });
-    TXT.texto(ctx, '8 OLEADAS. AL FINAL, EL ROBOT GUARDIAN', W / 2, 86, PAL.gris, 1, 'centro');
+    UI.boton(ctx, 110, 60, 260, 22, 'OLEADAS: SECTOR 1 - BLOQUE CRIOGENICO', { accion: A.soloCoop });
+    TXT.texto(ctx, 'TU CONTRA 8 OLEADAS. AL FINAL, EL ROBOT GUARDIAN', W / 2, 86, PAL.gris, 1, 'centro');
     UI.boton(ctx, 110, 104, 260, 22, 'PRACTICA: SALA DEL REACTOR', { accion: A.soloPractica });
     TXT.texto(ctx, 'LA ARENA DEL VERSUS CON ZOMBIS Y DRONES', W / 2, 130, PAL.gris, 1, 'centro');
     UI.boton(ctx, 110, 150, 260, 16, 'PERSONAJE: ' + DM.PERSONAJES[S.personaje].nombre, { accion: function () { S.volverDeSeleccion = 'solo'; A.ir('seleccion'); } });
@@ -143,7 +143,7 @@
     // Modo y resumen
     TXT.texto(ctx, 'MODO', 10, 66, PAL.gris);
     UI.boton(ctx, 10, 74, 132, 14, s.modo === 'coop' ? 'COOPERATIVO' : 'VERSUS', { apagado: !anf, accion: function () { R.configurar(function (x) { x.modo = x.modo === 'coop' ? 'versus' : 'coop'; }); } });
-    TXT.texto(ctx, s.modo === 'coop' ? 'SECTOR CRIOGENICO 4' : 'SALA DEL REACTOR', 10, 92, PAL.cianOsc);
+    TXT.texto(ctx, s.modo === 'coop' ? 'SECTOR 1 - OLEADAS' : 'SALA DEL REACTOR', 10, 92, PAL.cianOsc);
     if (s.modo === 'coop') {
       UI.boton(ctx, 10, 102, 132, 12, 'FUEGO AMIGO: ' + { no: 'NO', si: 'SI', explosivos: 'EXPLOSIVOS' }[s.coop.fuegoAmigo], { apagado: !anf, accion: function () { R.configurar(function (x) { x.coop.fuegoAmigo = { no: 'si', si: 'explosivos', explosivos: 'no' }[x.coop.fuegoAmigo]; }); } });
       UI.boton(ctx, 10, 116, 132, 12, 'TRAMPAS: ' + siNo(s.coop.trampas), { apagado: !anf, accion: function () { R.configurar(function (x) { x.coop.trampas = !x.coop.trampas; }); } });
@@ -258,7 +258,17 @@
     UI.inicio('opciones');
     controlesAudio(ctx, 157, 50, S, A);
     TXT.texto(ctx, 'CALIDAD: ' + (DM.raycaster.calidad === 'alta' ? 'ALTA' : 'MEDIA') + ' (TECLA C)', W / 2, 140, PAL.gris, 1, 'centro');
-    UI.boton(ctx, 190, 200, 100, 16, 'VOLVER', { accion: function () { A.ir(S.volverDeOpciones || 'titulo'); } });
+    // Diagnóstico de la música: qué archivo busca y si lo encontró
+    const em = DM.Audio.estadoMusica();
+    const NOM = { menu: 'MENU', coop: 'OLEADAS', final: 'OLEADA FINAL', versus: 'VERSUS' };
+    const EST = { ok: ['OK', PAL.verde], falta: ['NO ENCONTRADO (SUENA LA PISTA GENERADA)', PAL.rojo], bloqueada: ['BLOQUEADA: HAZ CLIC', PAL.amarillo], cargando: ['CARGANDO...', PAL.gris], 'sin cargar': ['HAZ CLIC PARA ACTIVAR EL SONIDO', PAL.gris] };
+    TXT.texto(ctx, 'MUSICA (CARPETA ASSETS/MUSICA)', 40, 154, PAL.cian);
+    ['menu', 'coop', 'final', 'versus'].forEach(function (u, k) {
+      const e = EST[em[u].estado] || [em[u].estado.toUpperCase(), PAL.gris];
+      TXT.texto(ctx, NOM[u] + ': ' + em[u].archivo.replace('assets/musica/', ''), 40, 164 + k * 9, PAL.blanco);
+      TXT.texto(ctx, e[0], 440, 164 + k * 9, e[1], 1, 'der');
+    });
+    UI.boton(ctx, 190, 210, 100, 16, 'VOLVER', { accion: function () { A.ir(S.volverDeOpciones || 'titulo'); } });
   }
 
   // ---------- Pausa (en red la partida sigue corriendo) ----------
@@ -283,8 +293,8 @@
     const filas = [
       ['MOVERSE', 'WASD (SHIFT CORRE)', 'JOYSTICK IZQUIERDO'], ['MIRAR', 'MOUSE', 'DESLIZAR A LA DERECHA'],
       ['DISPARAR / GOLPEAR', 'CLIC IZQUIERDO', 'BOTON DISPARO'], ['ARMAS', '1-4 Y RUEDA', 'BOTON ARMA'],
-      ['LANZABLE', 'G O CLIC DERECHO', 'BOTON LANZAR'], ['ELEGIR LANZABLE', 'Q', 'TOCAR EL ICONO'], ['RECARGAR', 'R', 'AUTOMATICA'],
-      ['USAR / LEER / REVIVIR', 'E (MANTENER PARA REVIVIR)', 'BOTON USAR'], ['MARCADOR', 'TAB', 'BOTON TAB'],
+      ['LANZABLE', 'G O CLIC DERECHO', 'BOTON LANZAR'], ['ELEGIR LANZABLE', 'X', 'BOTON GIRAR'], ['RECARGAR', 'R', 'AUTOMATICA'],
+      ['USAR / LEER / REVIVIR', 'E (MANTENER PARA REVIVIR)', 'BOTON USAR'], ['MARCADOR', 'TAB', 'BOTON TAB'], ['MAPA', 'Q', 'BOTON MAPA'],
       ['PAUSA / SILENCIO', 'ESC / M', 'BOTONES'], ['FPS / CALIDAD', 'P / C', '-']
     ];
     TXT.texto(ctx, 'ACCION', 20, 32, PAL.gris); TXT.texto(ctx, 'PC', 170, 32, PAL.gris); TXT.texto(ctx, 'TACTIL', 330, 32, PAL.gris);

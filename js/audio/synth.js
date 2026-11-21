@@ -24,21 +24,50 @@
   const oyente = { x: 0, y: 0, ang: 0, piso: 0 };
 
   // ---------- Música de archivos ----------
-  const ARCHIVOS = { menu: 'monume', coop: 'kulakovka', final: 'atlasaudio', versus: 'alex-morgan' };
+  // Los nombres de archivo se pueden cambiar en js/datos/musica.js
   const RESPALDO = { menu: 'titulo', coop: 'z1', final: 'jefe', versus: 'z2' };
-  const pistasMp3 = {};           // nombre → HTMLAudioElement (o false si no existe)
+  const pistasMp3 = {};           // uso → HTMLAudioElement que sí cargó (o false si ninguno existe)
+  const estado = {};              // uso → 'cargando' | 'ok' | 'falta' | 'bloqueada'
+  const archivoUsado = {};        // uso → ruta del archivo que se está usando
   let actual = null, nombreActual = null;
 
   function volMusica() { return prefs.silencio ? 0 : prefs.musica; }
-  function cargarMp3(nombre) {
-    if (pistasMp3[nombre] !== undefined) return pistasMp3[nombre];
+  function candidatos(uso) {
+    const l = [];
+    const nombres = (DM.MUSICA && DM.MUSICA[uso]) || [];
+    for (const n of nombres) {
+      if (/\.(mp3|ogg|m4a|wav)$/i.test(n)) l.push('assets/musica/' + n);
+      else { l.push('assets/musica/' + n + '.mp3'); l.push('assets/musica/' + n + '.MP3'); }
+    }
+    return l;
+  }
+  // Prueba los nombres posibles uno por uno hasta que alguno cargue
+  function cargarMp3(uso) {
+    if (pistasMp3[uso] !== undefined) return pistasMp3[uso];
+    const lista = candidatos(uso);
+    let k = 0;
     const a = new Audio();
-    a.src = 'assets/musica/' + ARCHIVOS[nombre] + '.mp3';
     a.loop = true; a.preload = 'auto';
-    a.addEventListener('error', function () { pistasMp3[nombre] = false; if (nombreActual === nombre) musica(nombre, true); });
-    a.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-    pistasMp3[nombre] = a;
+    estado[uso] = 'cargando';
+    a.addEventListener('error', function () {
+      k++;
+      if (k < lista.length) { a.src = lista[k]; archivoUsado[uso] = lista[k]; if (nombreActual === uso) tocar(a, uso); return; }
+      pistasMp3[uso] = false; estado[uso] = 'falta';
+      if (nombreActual === uso) musica(uso, true);   // sin archivo: pista generada
+    });
+    a.addEventListener('canplay', function () { if (estado[uso] !== 'bloqueada') estado[uso] = 'ok'; });
+    if (!lista.length) { pistasMp3[uso] = false; estado[uso] = 'falta'; return false; }
+    a.src = lista[0]; archivoUsado[uso] = lista[0];
+    pistasMp3[uso] = a;
     return a;
+  }
+  function tocar(a, uso) {
+    a.volume = volMusica();
+    const pr = a.play();
+    if (pr && pr.then) pr.then(function () { estado[uso] = 'ok'; }).catch(function (e) {
+      // El navegador bloquea el sonido hasta que haya un clic o toque: se reintenta en el siguiente
+      if (e && e.name === 'NotAllowedError') estado[uso] = 'bloqueada';
+    });
   }
   function musica(nombre, forzar) {
     if (nombre === nombreActual && !forzar) return;
@@ -47,17 +76,41 @@
     synthMusica(null);
     if (!nombre || !ctx) return;
     const a = cargarMp3(nombre);
-    if (a) {
-      a.volume = volMusica(); a.currentTime = 0;
+    if (a) { try { a.currentTime = 0; } catch (err) { /* nada */ } tocar(a, nombre); actual = a; }
+    else synthMusica(RESPALDO[nombre]);
+  }
+  // Se llama en cada clic, toque o tecla: si la música quedó bloqueada, vuelve a intentar
+  function reintentar() {
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    if (actual && actual.paused && nombreActual) tocar(actual, nombreActual);
+  }
+  // Desbloqueo: algunos navegadores (Safari, el WebView de Android) solo dejan sonar un
+  // audio si se le dio play dentro de un clic o toque. En el primer toque se "despiertan" todos.
+  let desbloqueado = false;
+  function desbloquear() {
+    if (desbloqueado) return;
+    desbloqueado = true;
+    ['menu', 'coop', 'final', 'versus'].forEach(function (u) {
+      const a = cargarMp3(u);
+      if (!a || a === actual) return;
+      const v = a.volume; a.volume = 0;
       const pr = a.play();
-      if (pr && pr.catch) pr.catch(function () { /* el navegador puede bloquear hasta que haya un clic */ });
-      actual = a;
-    } else synthMusica(RESPALDO[nombre]);
+      if (pr && pr.then) pr.then(function () { if (a !== actual) a.pause(); a.volume = v; }).catch(function () { a.volume = v; desbloqueado = false; });
+    });
+  }
+  function estadoMusica() {
+    const r = {};
+    ['menu', 'coop', 'final', 'versus'].forEach(function (u) {
+      r[u] = { estado: estado[u] || 'sin cargar', archivo: archivoUsado[u] || (candidatos(u)[0] || '') };
+    });
+    r.actual = nombreActual; r.sonando = !!(actual && !actual.paused);
+    return r;
   }
 
   // ---------- Inicio (debe ocurrir dentro de un clic o toque) ----------
   function iniciar() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); if (actual && actual.paused) actual.play().catch(function () {}); return; }
+    if (ctx) { reintentar(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
@@ -77,6 +130,7 @@
     const d = ruido.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     setInterval(programar, 25);
+    ['menu', 'coop', 'final', 'versus'].forEach(cargarMp3);
     if (nombreActual) musica(nombreActual, true);
   }
   function aplicarVolumen() {
@@ -225,7 +279,7 @@
   }
 
   DM.Audio = {
-    iniciar: iniciar, musica: musica, sfx: sfx, oyente: oyente,
+    iniciar: iniciar, musica: musica, sfx: sfx, oyente: oyente, reintentar: reintentar, estadoMusica: estadoMusica, desbloquear: desbloquear,
     alternar: function () { prefs.silencio = !prefs.silencio; aplicarVolumen(); guardar(); return !prefs.silencio; },
     fijarVolumen: function (tipo, v) { prefs[tipo] = Math.max(0, Math.min(1, Math.round(v * 10) / 10)); aplicarVolumen(); guardar(); },
     get prefs() { return prefs; },

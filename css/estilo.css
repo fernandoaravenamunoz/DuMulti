@@ -64,6 +64,7 @@ body {
 #btn-lanzar { right: calc(3% + 16vh); bottom: calc(18% + 23vh); }
 #btn-lanzsel { right: calc(3% + 32vh); bottom: calc(18% + 23vh); width: 8vh; height: 8vh; font-size: 3vh; border-color: #e8b923; color: #ffd34a; }
 #btn-tab { top: 4%; left: calc(3% + 11vh); width: 11vh; height: 9vh; font-size: 2.4vh; border-color: #8d93ad; }
+#btn-mapa { top: 4%; left: calc(3% + 24vh); width: 12vh; height: 9vh; font-size: 2.4vh; border-color: #22e4ff; }
 #btn-pausa { top: 4%; left: 3%; width: 9vh; height: 9vh; font-size: 3vh; border-color: #8d93ad; }
 
 /* Silencio: siempre visible */

@@ -380,6 +380,7 @@
     }
 
     DM.Enemigos.paso(this, dt);
+    this.resolverChoques();
     DM.Combate.pasoProyectiles(this, dt);
     DM.Combate.pasoMinas(this);
     DM.Combate.pasoTorretas(this, dt);
@@ -389,6 +390,44 @@
     for (let i = this.calor.length - 1; i >= 0; i--) if (this.calor[i].hasta < this.tiempo) this.calor.splice(i, 1);
     this.reglas.paso(dt);
     this.guardarHistoria();
+  };
+
+  // ---------- Choques entre cuerpos ----------
+  // Nadie atraviesa a nadie: si un enemigo y un jugador se superponen, se separan;
+  // el jugador además recibe un empujón hacia atrás. Entre jugadores, se separan suave.
+  Mundo.prototype.resolverChoques = function () {
+    const mapa = this.mapa;
+    const lista = [];
+    for (const id in this.jugadores) { const j = this.jugadores[id]; if (j.estado !== 'muerto' && !j.transicion) lista.push(j); }
+    for (const j of lista) {
+      for (const e of this.enemigos) {
+        if (e.muerto || e.piso !== j.piso) continue;
+        if (DM.ENEMIGOS[e.tipo].vuela && e.z > 0.3) continue;          // los drones vuelan por encima
+        const dx = j.x - e.x, dy = j.y - e.y, d = Math.hypot(dx, dy), m = C.RADIO_JUGADOR + e.radio;
+        if (d >= m) continue;
+        const nx = d > 0.001 ? dx / d : Math.cos(j.ang + Math.PI), ny = d > 0.001 ? dy / d : Math.sin(j.ang + Math.PI);
+        const solape = m - d;
+        // El jugador cede más ante los enemigos grandes (guardián)
+        const kj = e.tipo === 'guardian' ? 0.85 : 0.6;
+        j.mover(nx * solape * kj, ny * solape * kj, mapa);
+        const r = e.radio * 0.9;
+        const ex = -nx * solape * (1 - kj), ey = -ny * solape * (1 - kj);
+        if (!mapa.solida(e.piso, e.x + ex + Math.sign(ex) * r, e.y)) e.x += ex;
+        if (!mapa.solida(e.piso, e.x, e.y + ey + Math.sign(ey) * r)) e.y += ey;
+        // Empujón hacia atrás (y se frena el avance contra el enemigo)
+        const contra = j.vx * -nx + j.vy * -ny;
+        if (contra > 0) { j.vx += nx * contra; j.vy += ny * contra; }
+        j.golpeX += nx * 1.6; j.golpeY += ny * 1.6;
+      }
+    }
+    for (let a = 0; a < lista.length; a++) for (let b = a + 1; b < lista.length; b++) {
+      const p = lista[a], q = lista[b];
+      if (p.piso !== q.piso || p.estado === 'caido' || q.estado === 'caido') continue;
+      const dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy), m = C.RADIO_JUGADOR * 2;
+      if (d >= m || d < 0.001) continue;
+      const k = (m - d) * 0.5 / d;
+      p.mover(dx * k, dy * k, mapa); q.mover(-dx * k, -dy * k, mapa);
+    }
   };
 
   Mundo.prototype.iniciarTransicion = function (j, destino) {

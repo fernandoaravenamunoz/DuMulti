@@ -147,6 +147,7 @@
       if (dd < d.alcance + C.RADIO_JUGADOR && e.tAtaque <= 0 && f > 0) {
         e.tAtaque = d.cadencia; e.anim = 0.001;
         mundo.danar(j, d.danio, { atacante: e, tipo: 'melee' });
+        if (dd > 0.01) { j.golpeX += (j.x - e.x) / dd * 3; j.golpeY += (j.y - e.y) / dd * 3; }   // el golpe empuja
         mundo.evento({ t: 'mordisco', piso: e.piso, x: e.x, y: e.y });
       }
     } else meta = rumbo(mundo, e, mundo.campo);
