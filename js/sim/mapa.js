@@ -125,6 +125,12 @@
       });
     });
 
+    // v1.2: zonas con nombre (y color de luz), rutas por personaje y secretos
+    this.zonas = (def.zonas || []).map(function (z, k) { return { k: k, nombre: z.nombre, piso: z.piso, x0: z.x0, y0: z.y0, x1: z.x1, y1: z.y1, luz: z.luz || null }; });
+    this.pisos.forEach(function (p, n) { p.zonas = self.zonas.filter(function (z) { return z.piso === n; }); });
+    this.rutas = (def.rutas || []).slice();
+    this.secretos = (def.secretos || []).map(function (s, k) { return { k: k, piso: s.piso, x: s.x, y: s.y, tipo: s.tipo, nombre: s.nombre || 'SECRETO' }; });
+
     // Interruptores (la pared del panel) y registros
     this.interruptores = (def.interruptores || []).map(function (s, k) { return { k: k, piso: s.piso, x: s.x, y: s.y, zona: s.zona }; });
     this.registros = (def.registros || []).slice();
@@ -162,6 +168,48 @@
     return false;
   };
   Mapa.prototype.mapaApertura = Mapa.prototype.apertura;
+
+  // Distancia caminando (en casillas, contando escaleras y ascensores) desde el
+  // punto de aparición k hasta cualquier casilla. Se calcula una vez y se guarda.
+  // Devuelve un arreglo por piso (Int16Array; −1 = no se llega).
+  Mapa.prototype.distanciasAparicion = function (k) {
+    this._distAp = this._distAp || [];
+    if (this._distAp[k]) return this._distAp[k];
+    const self = this, a = this.apariciones[k];
+    const d = this.pisos.map(function (p) { const t = new Int16Array(p.ancho * p.alto); t.fill(-1); return t; });
+    const cola = [];
+    function poner(n, x, y, v) {
+      const p = self.pisos[n];
+      if (!p.dentro(x, y)) return;
+      const i = p.indice(x, y);
+      if (d[n][i] >= 0) return;
+      const t = p.paredes[i];
+      if (t && !DM.PAREDES[t].puerta) return;
+      d[n][i] = v; cola.push(n, x, y);
+    }
+    poner(a.piso, Math.floor(a.x), Math.floor(a.y), 0);
+    for (let q = 0; q < cola.length; q += 3) {
+      const n = cola[q], x = cola[q + 1], y = cola[q + 2], p = this.pisos[n], v = d[n][p.indice(x, y)] + 1;
+      poner(n, x + 1, y, v); poner(n, x - 1, y, v); poner(n, x, y + 1, v); poner(n, x, y - 1, v);
+      const e = p.enlace[p.indice(x, y)];
+      if (e >= 0) { const o = this.extremos[this.extremos[e].otro]; if (o) poner(o.piso, o.x, o.y, v); }
+    }
+    this._distAp[k] = d;
+    return d;
+  };
+  Mapa.prototype.distanciaDesdeAparicion = function (k, piso, x, y) {
+    const p = this.pisos[piso], cx = Math.floor(x), cy = Math.floor(y);
+    if (!p.dentro(cx, cy)) return -1;
+    return this.distanciasAparicion(k)[piso][p.indice(cx, cy)];
+  };
+
+  // Zona (con nombre) en la que está el punto, o null. Gana la primera de la lista que lo contenga.
+  Mapa.prototype.zonaEn = function (piso, x, y) {
+    const p = this.pisos[piso]; if (!p || !p.zonas) return null;
+    const cx = Math.floor(x), cy = Math.floor(y);
+    for (const z of p.zonas) if (cx >= z.x0 && cx <= z.x1 && cy >= z.y0 && cy <= z.y1) return z;
+    return null;
+  };
 
   // ¿Está el punto en la zona de salida?
   Mapa.prototype.enSalida = function (piso, x, y) {

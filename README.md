@@ -1,4 +1,4 @@
-# DuMulti v1.1
+# DuMulti v1.2
 
 Shooter en primera persona multijugador (hasta 8 jugadores) en el universo de **Worodorox 3073**, con estética 32 bits "Alarma neón". Corre en el navegador (PC y celular) y como APK de Android.
 
@@ -18,19 +18,22 @@ El anfitrión (idealmente en un PC con buena conexión) crea la sala y comparte 
 
 ## Controles
 
-| Acción | PC | Táctil |
-|---|---|---|
-| Moverse | WASD (Shift corre) | Joystick izquierdo (al borde corre) |
-| Mirar | Mouse | Deslizar en la mitad derecha |
-| Disparar / golpear | Clic izquierdo | DISPARO |
-| Armas | 1–4 y rueda | ARMA |
-| Lanzable / elegir lanzable | G o clic derecho / X | LANZAR / ↻ |
-| Mapa | Q | MAPA |
-| Recargar | R (también automática) | automática |
-| Usar, leer, revivir | E (mantener para revivir, sostener un interruptor o activar una consola) | USAR |
-| Marcador | Tab | TAB |
-| Pausa / silencio | Esc / M | II / ♫ |
-| FPS / calidad | P / C | — |
+| Acción | PC | Táctil | Control USB / Bluetooth |
+|---|---|---|---|
+| Moverse | WASD (Shift corre) | Joystick izquierdo (al borde corre) | Stick izquierdo (apretarlo o a fondo corre) |
+| Mirar | Mouse | Deslizar en la mitad derecha | Stick derecho |
+| Disparar / golpear | Clic izquierdo | DISPARO | Gatillo derecho (RT / R2) |
+| Armas | 1–4 y rueda | ARMA | LB / RB |
+| Lanzable / elegir lanzable | G o clic derecho / X | LANZAR / ↻ | Gatillo izquierdo (LT / L2) / Y (△) |
+| Mapa | Q | MAPA | Cruceta abajo |
+| Ping (marcar para el equipo) | F o clic de la rueda | ! | Cruceta arriba |
+| Recargar | R (también automática) | automática | X (□) |
+| Usar, leer, revivir | E (mantener para revivir, sostener un interruptor o activar una consola) | USAR | A (✕), mantener igual que E |
+| Marcador | Tab | TAB | View / Select |
+| Pausa / silencio | Esc / M | II / ♫ | Menú / Start |
+| FPS / calidad | P / C | — | — |
+
+**Control:** se conecta y se usa sin configurar nada (Chrome o Edge; también en el celular por Bluetooth). En los menús: cruceta o stick para moverse, A para aceptar, B para volver. Con el control la ayuda de puntería es la del celular. En OPCIONES se ve si el juego lo detectó y se ajustan la sensibilidad del stick y la zona muerta (súbela si el personaje se mueve solo); invertir vertical es la misma opción de siempre. Los botones y velocidades están en `js/datos/mando.js`. Si el navegador no lo detecta, aprieta cualquier botón con la ventana del juego activa.
 
 ## Qué incluye
 
@@ -45,9 +48,12 @@ El anfitrión (idealmente en un PC con buena conexión) crea la sala y comparte 
 
   Las consolas se activan manteniendo USAR; una flecha arriba de la pantalla apunta al objetivo y el MAPA lo marca. En multijugador el anfitrión elige el sector entre los que él ya desbloqueó; al ganar, todos guardan el avance.
 - **Supervivencia** "Sector 1 - Bloque criogénico" (solo o cooperativo) (24×24, 2 pisos): 8 oleadas desde las cápsulas hacia la sala central, robot guardián al final, caer y revivir, estaciones de respaldo, 3 reimpresiones del equipo, premios en momentos clave y el desintegrador en la oleada final.
-- **Versus** "Sala del reactor" (24×24, 2 pisos, simétrica): todos contra todos o por equipos Cian/Amarillo, fuego amigo (no / sí / solo explosivos), bajas y tiempo, muerte súbita, puntaje completo, disponibilidad de cada arma, objeto, premio, enemigo y trampa, configuraciones rápidas y una propia guardada.
+- **Versus** con dos arenas: **Cámara de pruebas** (20×20, 1 piso, para 2 a 4 jugadores) y **Sala del reactor** (24×24, 2 pisos, para 5 a 8). La opción ARENA (AUTO / CHICA / GRANDE) elige según cuántos hay en la sala; PRÁCTICA también la usa. Se reaparece a distancia media (sin que un rival te vea, a 8–14 casillas de camino) y quien dispara un arma a distancia aparece 2 s en el mapa de sus rivales (configurable). Versus: todos contra todos o por equipos Cian/Amarillo, fuego amigo (no / sí / solo explosivos), bajas y tiempo, muerte súbita, puntaje completo, disponibilidad de cada arma, objeto, premio, enemigo y trampa, configuraciones rápidas y una propia guardada.
 - **8 personajes** con puños, arma de contacto, arma a distancia y ventaja propias.
 - **7 armas pesadas + desintegrador**, **5 lanzables**, **5 enemigos**, **9 tipos de trampas** e interruptores de sala.
+- **v1.2 – combate:** marca de acierto en la mira, destello y retroceso del enemigo al pegarle, el zombi levanta los brazos 0,3 s antes de golpear, los enemigos sueltan elixires y munición, y las trampas dañan al 40 % a los enemigos.
+- **v1.2 – equipo y orientación:** ping (F), zonas con nombre y color de luz propio, rejillas que solo Gargolfo rompe, paneles lejanos para Pirulo, consolas que se mantienen a la vez en el sector 2 (con 2 o más jugadores).
+- **v1.2 – rejugar y datos:** medallas por sector (SIN REIMPRESIONES, RÁPIDO, ARCHIVISTA), 3 secretos por mapa de campaña (paredes falsas y nichos tras rejillas) y OPCIONES → ESTADÍSTICAS: mapa de calor de las caídas, tiempo por fase y botón para copiar los datos.
 - **Registros de la nave** (comunicados, cartas, reportes) con ARCHIVO en la pausa; en cooperativo se comparten.
 - **Sonido**: efectos posicionales generados con código, música desde `assets/musica/` (si falta un MP3, suena una pista generada), volumen de música y efectos por separado, silencio.
 
@@ -62,10 +68,11 @@ Para el APK, la música también tiene que quedar en `android/app/src/main/asset
 ```
 js/
 ├── config.js            constantes, paleta, códigos de casillas
+├── mando.js             control USB o Bluetooth (se suma a input.js)
 ├── datos/               personajes, armas, enemigos y objetos, registros, configuración de partida,
 │                        campana.js (los 5 sectores y el progreso guardado)
 ├── mapas/               sector4.js, pasarelas.js, laboratorios.js, hangar.js (campaña y cooperativo),
-│                        reactor.js (versus y sector 4)
+│                        reactor.js (versus grande y sector 4), arena_chica.js (versus chico)
 ├── sim/                 SIMULACIÓN PURA (sin DOM): mapa, jugador, combate, enemigos,
 │                        trampas, objetos, reglas de cada modo, mundo
 ├── red/                 transporte (PeerJS / BroadcastChannel), instantáneas, sala y sincronización
@@ -87,7 +94,10 @@ js/
 - **Oleadas de supervivencia y configuraciones rápidas:** `js/datos/partida.js`.
 - **Campaña (fases, oleadas, enemigos que siguen llegando, premios, tiempos):** `js/datos/campana.js`.
 - **Textos de los registros:** `js/datos/registros.js`.
-- **Mapas:** `js/mapas/*.js` (la leyenda está al inicio de `sector4.js`). Después de cambiarlos, valida con `npm run validar` (o desde el panel NPM SCRIPTS de VS Code). Para comprobar que los 5 sectores se pueden terminar: `npm run probar`.
+- **Mapas:** `js/mapas/*.js` (la leyenda está al inicio de `sector4.js`). Después de cambiarlos, valida con `npm run validar` (o desde el panel NPM SCRIPTS de VS Code). Para comprobar que los 5 sectores se pueden terminar (y las pruebas de trampas y consolas): `npm run probar`. Para medir tamaño, visibilidad y cada cuánto se encuentran 2 jugadores, y revisar la reaparición del versus: `npm run medir`.
+- **Objetos que sueltan los enemigos, daño de las trampas y arenas del versus:** `js/datos/partida.js` (SUELTAN, TRAMPAS_A_ENEMIGOS, arenaVersus).
+- **Zonas, rutas de personaje y secretos de cada mapa:** al final de cada `js/mapas/*.js` (`zonas`, `rutas`, `secretos`). Pared falsa = `F`.
+- **Tiempo meta de la medalla RÁPIDO:** `tiempoMeta` de cada sector en `js/datos/campana.js` (provisorios).
 - **Borrar el avance de la campaña:** en la consola (F12) `DM.Progreso.borrar()`.
 
 ## Android y publicación

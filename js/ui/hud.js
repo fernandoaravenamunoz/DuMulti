@@ -48,12 +48,14 @@
   HUD.anunciarPiso = function (nombre) { HUD.nombrePiso = nombre; HUD.tPiso = 3.5; };
   HUD.anunciar = function (texto, color) { HUD.anuncios.push({ texto: texto, color: PAL[color] || PAL.blanco, t: 3.5 }); if (HUD.anuncios.length > 3) HUD.anuncios.shift(); };
   HUD.baja = function (texto) { HUD.feed.unshift({ texto: texto, t: 6 }); if (HUD.feed.length > 5) HUD.feed.pop(); };
-  HUD.reiniciar = function () { HUD.feed = []; HUD.anuncios = []; HUD.tiempoMsg = 0; HUD.lectura = null; HUD.tDanio = 0; };
+  HUD.reiniciar = function () { HUD.feed = []; HUD.anuncios = []; HUD.tiempoMsg = 0; HUD.lectura = null; HUD.tDanio = 0; HUD.tAcierto = 0; };
 
   // Eventos del mundo que le importan al HUD
   HUD.procesar = function (eventos, jug, mundo) {
     for (const e of eventos) {
       switch (e.t) {
+        case 'secreto': HUD.anunciar('SECRETO ENCONTRADO ' + e.n + '/' + e.total, 'verde'); break;
+        case 'acierto': if (e.de === jug.id) { HUD.tAcierto = e.baja ? 0.32 : 0.16; HUD.aciertoBaja = !!e.baja; } break;
         case 'herido': if (e.id === jug.id) { HUD.tDanio = 0.45; HUD.dirDanio = e.dx !== null ? Math.atan2(e.dy - jug.y, e.dx - jug.x) : null; } break;
         case 'recoger': if (e.id === jug.id) { HUD.tRecoger = 0.25; HUD.mostrar(nombreObjeto(e.tipo), 1.5); } break;
         case 'baja': HUD.baja(e.texto); break;
@@ -70,6 +72,7 @@
   function nombreObjeto(t) {
     if (t.indexOf('arma:') === 0) return DM.ARMAS[t.slice(5)].nombre;
     if (t.indexOf('lanz:') === 0) return '+1 ' + NOMBRE_LANZ[t.slice(5)];
+    if (t.indexOf('municion:') === 0) return 'MUNICION: ' + DM.ARMAS[t.slice(9)].nombre;
     return (DM.OBJETOS[t] || {}).nombre || t;
   }
 
@@ -157,14 +160,27 @@
       else if (p.d < DM.raycaster.zbuf[Math.max(0, Math.min(A - 1, p.x | 0))] + 0.3) TXT.texto(ctx, o.nombre, p.x, p.y - 7, col, 1, 'centro');
     }
 
+    // Marca de acierto (X alrededor de la mira; roja si fue baja)
+    if (HUD.tAcierto > 0) {
+      HUD.tAcierto -= dt;
+      ctx.fillStyle = HUD.aciertoBaja ? PAL.rojo : PAL.blanco;
+      for (let q = 4; q < 8; q++) { ctx.fillRect(cx - q - 1, cy - q - 1, 2, 2); ctx.fillRect(cx + q - 1, cy - q - 1, 2, 2); ctx.fillRect(cx - q - 1, cy + q - 1, 2, 2); ctx.fillRect(cx + q - 1, cy + q - 1, 2, 2); }
+    }
     // Mira
     ctx.fillStyle = PAL.cian; ctx.fillRect(cx - 1, cy - 1, 2, 2);
     ctx.fillStyle = 'rgba(34,228,255,0.45)';
     ctx.fillRect(cx - 6, cy - 1, 3, 2); ctx.fillRect(cx + 3, cy - 1, 3, 2); ctx.fillRect(cx - 1, cy - 6, 2, 3); ctx.fillRect(cx - 1, cy + 3, 2, 3);
 
     // Aviso [E] y barra de revivir
-    if (aviso && jug.estado === 'vivo' && !HUD.lectura) {
-      TXT.textoConCaja(ctx, (tactil ? 'USAR: ' : '[E] ') + aviso.texto, cx, cy + 22, PAL.cianClaro, PAL.cian);
+    // Pings: distancia sobre la marca
+    for (const p of DM.Escena.listaPings(mundo, jug)) {
+      if (p.piso !== jug.piso) continue;
+      const q = DM.Escena.proyectar(cam, p.piso, p.x, p.y, p.que === 'enemigo' ? 1.45 : 1.1);
+      if (!q || q.x < 0 || q.x > A) continue;
+      TXT.texto(ctx, Math.round(Math.hypot(p.x - jug.x, p.y - jug.y)) + ' M', Math.round(q.x), Math.max(2, Math.round(q.y) - 8), p.color || PAL.verde, 1, 'centro');
+    }
+    if (aviso && aviso.texto && jug.estado === 'vivo' && !HUD.lectura) {
+      TXT.textoConCaja(ctx, (aviso.accion === 'info' ? '' : tactil ? 'USAR: ' : '[E] ') + aviso.texto, cx, cy + 22, PAL.cianClaro, PAL.cian);
       if (aviso.accion === 'revivir' || (aviso.accion === 'consola' && aviso.progreso > 0 && aviso.progreso < 1)) {
         ctx.fillStyle = '#16151f'; ctx.fillRect(cx - 40, cy + 34, 80, 4);
         ctx.fillStyle = PAL.verde; ctx.fillRect(cx - 40, cy + 34, Math.round(80 * (aviso.progreso || 0)), 4);

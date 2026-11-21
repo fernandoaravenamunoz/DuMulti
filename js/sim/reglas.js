@@ -23,20 +23,43 @@
   function vivos(mundo) { const l = []; for (const id in mundo.jugadores) { const j = mundo.jugadores[id]; if (j.estado === 'vivo') l.push(j); } return l; }
   function listaJugadores(mundo) { return Object.keys(mundo.jugadores).map(function (k) { return mundo.jugadores[k]; }); }
 
-  function puntoAparicion(mundo, j, rivalesLejos) {
-    const ap = mundo.mapa.apariciones;
-    if (!rivalesLejos) return ap[(j.puesto || 0) % ap.length];
-    // El punto más alejado de los rivales vivos
-    let mejor = ap[0], md = -1;
-    for (const p of ap) {
-      let m = 1e9;
-      for (const o of vivos(mundo)) {
-        if (o === j || !mundo.sonRivales(j, o)) continue;
-        const d = Math.hypot(o.x - p.x, o.y - p.y) + (o.piso !== p.piso ? 8 : 0);
-        if (d < m) m = d;
+  // Punto de aparición.
+  //   modo false     → el de su puesto (cooperativo, campaña)
+  //   modo 'inicio'  → el más alejado (por camino) de los ya ubicados (comienzo del versus)
+  //   modo true      → reaparición del versus a DISTANCIA MEDIA: que ningún rival vivo
+  //                    lo vea y a 8–14 casillas de camino del rival más cercano
+  //                    (si ninguno cumple, el más cercano a ese rango).
+  const REAP_MIN = 8, REAP_MAX = 14;
+  function puntoAparicion(mundo, j, modo, ubicados) {
+    const ap = mundo.mapa.apariciones, mapa = mundo.mapa;
+    if (!modo) return ap[(j.puesto || 0) % ap.length];
+    if (modo === 'inicio') {
+      const otros = ubicados || [];
+      let mejor = 0, md = -1;
+      for (let k = 0; k < ap.length; k++) {
+        if (otros.indexOf(k) >= 0) continue;
+        let m = otros.length ? 1e9 : mundo.azar() * 10;
+        for (const o of otros) { const d = mapa.distanciaDesdeAparicion(k, ap[o].piso, ap[o].x, ap[o].y); m = Math.min(m, d < 0 ? 999 : d); }
+        m += mundo.azar() * 2;
+        if (m > md) { md = m; mejor = k; }
       }
-      m += mundo.azar() * 2;
-      if (m > md) { md = m; mejor = p; }
+      if (ubicados) ubicados.push(mejor);
+      return ap[mejor];
+    }
+    const rivales = vivos(mundo).filter(function (o) { return o !== j && mundo.sonRivales(j, o); });
+    if (!rivales.length) return ap[Math.floor(mundo.azar() * ap.length)];
+    let mejor = ap[0], mp = 1e9;
+    for (let k = 0; k < ap.length; k++) {
+      const p = ap[k];
+      let dmin = 1e9, visto = false;
+      for (const o of rivales) {
+        const d = mapa.distanciaDesdeAparicion(k, o.piso, o.x, o.y);
+        dmin = Math.min(dmin, d < 0 ? 999 : d);
+        if (o.piso === p.piso && Math.hypot(o.x - p.x, o.y - p.y) < 30 && mapa.lineaVision(p.piso, p.x, p.y, o.x, o.y)) visto = true;
+      }
+      const desvio = dmin < REAP_MIN ? (REAP_MIN - dmin) * 1.5 : dmin > REAP_MAX ? dmin - REAP_MAX : 0;
+      const puntaje = (visto ? 1000 : 0) + desvio + mundo.azar() * 0.8;
+      if (puntaje < mp) { mp = puntaje; mejor = p; }
     }
     return mejor;
   }
@@ -145,7 +168,7 @@
       this.tReimpresion += dt;
       if (this.tReimpresion > 2) {
         this.tReimpresion = 0;
-        this.vidas--;
+        this.vidas--; this.vidasUsadas = (this.vidasUsadas || 0) + 1;
         if (this.vidas <= 0) { this.terminar('derrota'); return; }
         for (const j of lista) j.reiniciar(estacionCercana(m, j), null);
         m.evento({ t: 'anuncio', texto: 'REIMPRESION DEL EQUIPO. QUEDAN ' + this.vidas, color: 'magenta' });
@@ -173,7 +196,7 @@
   };
   Coop.prototype.estado = function () {
     const quedan = this.mundo.enemigos.filter(function (e) { return !e.muerto; }).length + this.cola.length;
-    return { modo: 'coop', oleada: this.oleada, total: this.total, quedan: quedan, pausa: this.tPausa, vidas: this.vidas, fin: this.terminado ? this.resultado : null };
+    return { modo: 'coop', oleada: this.oleada, total: this.total, quedan: quedan, pausa: this.tPausa, vidas: this.vidas, fin: this.terminado ? this.resultado : null, secretos: [this.mundo.secretosHallados.length, this.mundo.mapa.secretos.length] };
   };
 
 
@@ -253,14 +276,24 @@
     const f = this.faseActual();
     if (!f || f.tipo !== 'activar' || this.consolas[k] >= 1) return;
     const antes = this.consolas[k];
-    this.consolas[k] = Math.min(1, antes + dt / (f.tiempo || 4));
     this.usandoConsola[k] = this.mundo.tiempo;
+    // v1.2: con 2 o más jugadores, las consolas "juntas" solo avanzan si se mantienen a la vez
+    if (this.deAVez(k)) {
+      const m = this.mundo, u = this.usandoConsola, c = this.consolas;
+      const otras = f.juntas.filter(function (q) { return q !== k && c[q] < 1; });
+      if (otras.some(function (q) { return !(u[q] >= m.tiempo - 0.1); })) return;
+    }
+    this.consolas[k] = Math.min(1, antes + dt / (f.tiempo || 4));
     if (antes === 0) this.mundo.evento({ t: 'consola', k: k, on: false, id: j.id });
     if (this.consolas[k] >= 1) {
       const listas = this.consolas.filter(function (v) { return v >= 1; }).length;
       this.mundo.evento({ t: 'consola', k: k, on: true, id: j.id });
       this.mundo.evento({ t: 'anuncio', texto: 'CONSOLA ACTIVADA ' + listas + '/' + this.consolas.length, color: 'verde' });
     }
+  };
+  Campana.prototype.deAVez = function (k) {
+    const f = this.faseActual();
+    return !!(f && f.juntas && f.juntas.indexOf(k) >= 0 && listaJugadores(this.mundo).length >= 2);
   };
   // Texto del aviso frente a la consola (en un cliente de red se usa el estado recibido)
   Campana.prototype.textoConsola = function (k) {
@@ -269,6 +302,8 @@
     const v = st ? (st.consolas[k] || 0) : this.consolas[k];
     if (v >= 1) return { texto: 'CONSOLA ACTIVADA', progreso: 1 };
     if (tipo !== 'activar') return { texto: 'CONSOLA SIN ENERGIA', progreso: 0 };
+    const fj = this.fases[(st ? st.fase : this.fase + 1) - 1];
+    if (fj && fj.juntas && fj.juntas.indexOf(k) >= 0 && Object.keys(this.mundo.jugadores).length >= 2) return { texto: 'MANTENGAN ESTA Y LA OTRA CONSOLA A LA VEZ', progreso: v };
     return { texto: 'MANTEN PARA ACTIVAR LA CONSOLA', progreso: v };
   };
   Campana.prototype.salidaActiva = function () { const f = this.faseActual(); return !!f && f.tipo === 'salida'; };
@@ -276,6 +311,7 @@
   Campana.prototype.paso = function (dt) {
     const m = this.mundo;
     if (this.terminado) return;
+    if (this.fase >= 0) this.tTotal = (this.tTotal || 0) + dt;
     if (this.fase < 0) {
       this.tPausa -= dt;
       if (this.tPausa <= 0) this.empezarFase(0);
@@ -347,6 +383,7 @@
       consolas: this.consolas.map(function (v) { return Math.floor(v * 100) / 100; }),
       restante: this.restante, salida: this.salidaActiva(), enSalida: this.enSalida, jugadores: listaJugadores(m).length,
       jefe: this.jefe && !this.jefe.muerto ? Math.max(0, this.jefe.vida / this.jefe.vidaMax) : (this.jefe ? 0 : -1),
+      secretos: [m.secretosHallados.length, m.mapa.secretos.length], reimpresionesUsadas: this.vidasUsadas || 0, tiempo: Math.round(this.tTotal || 0),
       fin: this.terminado ? this.resultado : null
     };
   };
@@ -370,9 +407,10 @@
       // Asignación balanceada (o la elección de cada uno, corrigiendo si queda muy dispareja)
       if (c.asignacion === 'auto' || lista.some(function (j) { return j.equipo !== 0 && j.equipo !== 1; })) lista.forEach(function (j, k) { j.equipo = k % 2; });
     } else lista.forEach(function (j) { j.equipo = null; });
+    const ubicados = [], p0 = m.mapa.pisos[0], cx = p0.ancho / 2, cy = p0.alto / 2;
     for (const j of lista) {
-      j.reiniciar(puntoAparicion(m, j, true), null);
-      j.ang = Math.atan2(12 - j.y, 12 - j.x);
+      j.reiniciar(puntoAparicion(m, j, 'inicio', ubicados), null);
+      j.ang = Math.atan2(cy - j.y, cx - j.x);
       j.bajas = 0; j.puntos = 0; j.muertes = 0;
     }
   };
@@ -401,7 +439,7 @@
     j.muertes++;
     j.estado = 'muerto'; j.tReaparecer = c.espera; j.cargaT = 0; j.vida = 0;
     if (j.pesada) DM.Objetos.soltarArma(m, j);
-    // Suelta un lanzable al morir (si tenía)
+    if (DM.Partida.RIVAL_SUELTA_VIDA && c.objetos && c.objetos.elixirP !== false) DM.Objetos.soltar(m, 'elixirP', j.piso, j.x + 0.25, j.y);
     m.evento({ t: 'baja', texto: texto });
     this.revisarMeta();
     if (this.muerteSubita && !this.terminado) this.revisarEmpate(true);

@@ -235,6 +235,13 @@
   function escalarHex(h, k) { const c = hexARgb(h); return '#' + [c[0] * k, c[1] * k, c[2] * k].map(function (v) { return ('0' + lim(v).toString(16)).slice(-2); }).join(''); }
 
   // Panel liso
+  // Pared falsa: igual a una pared dañada, con una junta vertical que delata la puerta
+  function texFalsa() {
+    const L = texDanada(2);
+    for (let y = 5; y < 59; y++) if (y % 6) L.pix(31, y, '#0b0a12');
+    for (let y = 8; y < 56; y += 12) L.pix(32, y, '#565b72');
+    return L;
+  }
   function texLisa() {
     const rnd = azar(120);
     const L = new Lienzo();
@@ -617,6 +624,7 @@
   const ID = {
     danada: [registrar(texDanada(0)), registrar(texDanada(1)), registrar(texDanada(2))],
     lisa: registrar(texLisa()),
+    falsa: registrar(texFalsa()),
     neon: registrar(texNeon()),
     tubos: registrar(texTuberias()),
     pantalla: [0, 1, 2].map(function (v) { return registrar([texPantalla(v, 0), texPantalla(v, 1)], 2); }),
@@ -854,6 +862,7 @@
       case P.REACTOR: return ID.reactor;
       case P.CONSOLA: return ID.consola[0];
       case P.NAVE: return ID.nave[hash(x, y) % 2];
+      case P.FALSA: return ID.falsa;
       default: return ID.danada[0];
     }
   }

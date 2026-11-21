@@ -3,6 +3,8 @@
 // Simétrica. El núcleo del reactor está al centro del piso 1; arriba, la
 // plataforma central (rodeada de láseres, rejillas y focos de radiación)
 // es el lugar más peligroso: ahí aparece el desintegrador.
+// v1.2: rejillas (R) en las salas de las esquinas para ver de lado a lado (filas 5 y 18)
+// y hacia el anillo exterior; se pueden romper.
 // Leyenda: ver js/mapas/sector4.js
 // =====================================================
 (function () {
@@ -25,8 +27,8 @@
           '#,,,,,,,,,,,,,,,,,,,,,,#',
           '#,,#T.####I..#####.##,,#',
           '#,,#....###p.###....C,,#',
-          '#,,..p..###..###..p..,,#',
-          '#,,#....###xx###....#,,#',
+          '#,,..p..RRR..RRR..p..,,#',
+          '#,,R....###xx###....R,,#',
           '#,,#....##A..P##....#,,#',
           '#,,#####b......b#####,,#',
           '#,,#####.H....H.#####,,#',
@@ -37,8 +39,8 @@
           '#,,#####.H....H.#####,,#',
           '#,,#####b......b#####,,#',
           '#,,#....##P..A##....#,,#',
-          '#,,#....###xx###....#,,#',
-          '#,,..p..###..###..p..,,#',
+          '#,,R....###xx###....R,,#',
+          '#,,..p..RRR..RRR..p..,,#',
           '#,,C....###.p###....#,,#',
           '#,,##.#####..I####.T#,,#',
           '#,,,,,,,,,,,,,,,,,,,,,,#',
@@ -116,6 +118,17 @@
     ],
     suprema: { piso: 1, x: 11, y: 11 },
 
+    // v1.2: zonas con nombre (la primera que contiene el punto gana) y su color de luz
+    zonas: [
+      { piso: 0, nombre: 'SALA NO', x0: 4, y0: 4, x1: 7, y1: 7, luz: '#22e4ff' },
+      { piso: 0, nombre: 'SALA NE', x0: 16, y0: 4, x1: 19, y1: 7, luz: '#ffd34a' },
+      { piso: 0, nombre: 'SALA SO', x0: 4, y0: 16, x1: 7, y1: 19, luz: '#4dff8a' },
+      { piso: 0, nombre: 'SALA SE', x0: 16, y0: 16, x1: 19, y1: 19, luz: '#e6e3ff' },
+      { piso: 0, nombre: 'NUCLEO DEL REACTOR', x0: 8, y0: 8, x1: 15, y1: 15, luz: '#ff3b3b' },
+      { piso: 0, nombre: 'ANILLO EXTERIOR', x0: 0, y0: 0, x1: 23, y1: 23 },
+      { piso: 1, nombre: 'PLATAFORMA CENTRAL', x0: 8, y0: 8, x1: 15, y1: 15, luz: '#ff3b3b' },
+      { piso: 1, nombre: 'ANILLO SUPERIOR', x0: 0, y0: 0, x1: 23, y1: 23 }
+    ],
     registros: [
       { id: 'r02', piso: 0, x: 13, y: 7 }, { id: 'c03', piso: 1, x: 10, y: 7 }
     ],

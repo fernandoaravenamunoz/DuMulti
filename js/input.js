@@ -89,6 +89,7 @@
       if (E.bloqueado) {
         if (e.button === 0) { E.disparoMouse = true; E.eventos.push('disparo'); }
         if (e.button === 2) E.eventos.push('lanzar');
+        if (e.button === 1) { e.preventDefault(); E.eventos.push('ping'); }
         return;
       }
       E.mouseAbajo = true;

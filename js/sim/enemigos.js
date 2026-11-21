@@ -29,6 +29,7 @@
     this.cargaT = 0; this.apunta = null;     // dron: carga del láser y punto fijado
     this.objetivoId = null; this.tVisto = 0;
     this.anim = 0;                          // animación de ataque (0..1)
+    this.prep = 0; this.prepId = null;      // zombi: anticipación del golpe
     this.muerto = false; this.tMuerto = 0;
     this.enEnlace = -1; this.lado = (id % 2) ? 1 : -1;
   }
@@ -143,15 +144,26 @@
         const nx = -(j.y - e.y) / dd, ny = (j.x - e.x) / dd;
         meta = { x: j.x + nx * e.lado * Math.min(1.4, dd * 0.4), y: j.y + ny * e.lado * Math.min(1.4, dd * 0.4) };
       }
-      // Ataque cuerpo a cuerpo
-      if (dd < d.alcance + C.RADIO_JUGADOR && e.tAtaque <= 0 && f > 0) {
-        e.tAtaque = d.cadencia; e.anim = 0.001;
-        mundo.danar(j, d.danio, { atacante: e, tipo: 'melee' });
-        if (dd > 0.01) { j.golpeX += (j.x - e.x) / dd * 3; j.golpeY += (j.y - e.y) / dd * 3; }   // el golpe empuja
-        mundo.evento({ t: 'mordisco', piso: e.piso, x: e.x, y: e.y });
+      // Ataque cuerpo a cuerpo: primero avisa (levanta los brazos y gruñe) y después golpea
+      if (dd < d.alcance + C.RADIO_JUGADOR && e.tAtaque <= 0 && f > 0 && !e.prep) {
+        e.tAtaque = d.cadencia; e.anim = 0.001; e.prep = C.ANTICIPO_ZOMBI; e.prepId = j.id;
+        mundo.evento({ t: 'amago', piso: e.piso, x: e.x, y: e.y });
       }
     } else meta = rumbo(mundo, e, mundo.campo);
-    if (meta) caminarHacia(mundo, e, meta, d.vel * f, dt);
+    if (e.prep > 0) {
+      e.prep -= dt;
+      if (e.prep <= 0) {
+        e.prep = 0;
+        const v = mundo.buscar(e.prepId);
+        const dv = v ? Math.hypot(v.x - e.x, v.y - e.y) : 99;
+        if (v && v.estado === 'vivo' && v.piso === e.piso && dv < d.alcance + C.RADIO_JUGADOR + 0.35 && f > 0) {
+          mundo.danar(v, d.danio, { atacante: e, tipo: 'melee' });
+          if (dv > 0.01) { v.golpeX += (v.x - e.x) / dv * 3; v.golpeY += (v.y - e.y) / dv * 3; }   // el golpe empuja
+          mundo.evento({ t: 'mordisco', piso: e.piso, x: e.x, y: e.y });
+        }
+      }
+    }
+    if (meta) caminarHacia(mundo, e, meta, d.vel * f * (e.prep > 0 ? 0.35 : 1), dt);
   }
 
   function caminarHacia(mundo, e, meta, vel, dt) {
@@ -253,7 +265,7 @@
       const d = DM.ENEMIGOS[e.tipo];
       for (const k in e.ef) if (e.ef[k] > 0) e.ef[k] = Math.max(0, e.ef[k] - dt);
       if (e.tAtaque > 0) e.tAtaque -= dt;
-      if (e.anim > 0) { e.anim += dt * 3; if (e.anim >= 1) e.anim = 0; }
+      if (e.anim > 0) { e.anim += dt * (d.robot ? 3 : 2); if (e.anim >= 1) e.anim = 0; }   // zombi: la pose de ataque dura lo que su anticipación
       const dec = Math.max(0, 1 - dt * 6);
       e.golpeX *= dec; e.golpeY *= dec;
       if (d.robot) pasoRobot(mundo, e, d, dt); else pasoZombi(mundo, e, d, dt);

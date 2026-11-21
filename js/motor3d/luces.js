@@ -76,8 +76,17 @@
         lista.push({ x: x + 0.5, y: y + 0.5, e: ESTACION });
       }
     }
+    // v1.2: las lámparas toman el color de su zona, y cada zona con color tiene una luz suave al centro
+    const zonaDe = function (x, y) { for (const z of piso.zonas || []) if (x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1) return z; return null; };
+    for (const z of piso.zonas || []) {
+      if (!z.luz) continue;
+      const cx = Math.floor((z.x0 + z.x1) / 2), cy = Math.floor((z.y0 + z.y1) / 2);
+      if (piso.pared(cx, cy) === 0) lista.push({ x: cx + 0.5, y: cy + 0.5, e: { col: rgb(z.luz, 0.5), radio: Math.max(3, (z.x1 - z.x0 + z.y1 - z.y0) / 3), canal: 0 } });
+    }
     for (const l of piso.lamparas) {
-      lista.push({ x: l.x + 0.5, y: l.y + 0.5, e: l.parpadea ? { col: LAMPARA.col, radio: LAMPARA.radio, canal: 3 } : LAMPARA });
+      const z = zonaDe(l.x, l.y);
+      const col = z && z.luz ? rgb(z.luz, 1.25) : LAMPARA.col;
+      lista.push({ x: l.x + 0.5, y: l.y + 0.5, e: { col: col, radio: LAMPARA.radio, canal: l.parpadea ? 3 : 0 } });
     }
     return lista;
   }

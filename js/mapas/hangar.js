@@ -57,18 +57,18 @@
           '######.##########.######',
           '##Z..................Z##',
           '##....................##',
-          '##..====########====..##',
-          '##..====########====..##',
-          '##..====########====..##',
-          '##..====########====..##',
+          '##..====#I##F###====..##',
+          '##..====#l##.###====..##',
+          '##..====#l##.###====..##',
+          '##..====#l######====..##',
           '##......l......l......##',
           '##......l......l......##',
-          '##..====########====..##',
-          '##..====########====..##',
-          '##..====########====..##',
-          '##..====########====..##',
-          '##..################..##',
-          'Le..################..##',
+          '##..====##R#####====..##',
+          '##..====##.#####====..##',
+          '##..====##.#####====..##',
+          '##..====#####.##====..##',
+          '##..#########.######..##',
+          'Le..#########F######..##',
           '##.........f..........##',
           '##Z..................Z##',
           '########################',
@@ -108,7 +108,24 @@
     ],
     suprema: { piso: 1, x: 14, y: 1 },
 
+    // v1.2: zonas con nombre (la primera que contiene el punto gana) y su color de luz
+    zonas: [
+      { piso: 0, nombre: 'PASILLO DE SERVICIO', x0: 2, y0: 1, x1: 21, y1: 4, luz: '#e6e3ff' },
+      { piso: 0, nombre: 'NAVE SALVAVIDAS', x0: 8, y0: 9, x1: 15, y1: 16, luz: '#4dff8a' },
+      { piso: 0, nombre: 'HANGAR B', x0: 1, y0: 5, x1: 22, y1: 22, luz: '#22e4ff' },
+      { piso: 1, nombre: 'TORRE DE CONTROL', x0: 2, y0: 1, x1: 21, y1: 5, luz: '#ffd34a' },
+      { piso: 1, nombre: 'PASARELAS DEL HANGAR', x0: 1, y0: 6, x1: 22, y1: 22, luz: '#22e4ff' }
+    ],
+    // v1.2: rutas de personaje y secretos (premio de una sola vez al pisar la casilla)
+    rutas: [{ tipo: 'pirulo', piso: 1, x: 9, y: 8 }, { tipo: 'gargolfo', piso: 1, x: 10, y: 14 }],
+    secretos: [
+      { piso: 1, x: 10, y: 16, tipo: 'blindajeTotal', nombre: 'NICHO DE GARGOLFO' },
+      { piso: 1, x: 13, y: 17, tipo: 'elixirTotal', nombre: 'PARED FALSA' },
+      { piso: 1, x: 12, y: 10, tipo: 'lanz:torreta', nombre: 'PARED FALSA' }
+    ],
     registros: [{ id: 't04', piso: 0, x: 12, y: 2, carta: true }, { id: 'c03', piso: 0, x: 11, y: 0 }],
-    interruptores: []
+    interruptores: [
+      { piso: 1, x: 9, y: 8, zona: [8, 12, 8, 13] }   // panel lejano de Pirulo
+    ]
   };
 })();

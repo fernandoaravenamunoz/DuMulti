@@ -18,17 +18,17 @@
   // [seq, avance, lateral, banderas, ang, pitch, arma]
   // banderas: 1 correr, 2 disparo, 4 usar, 8 usarToque, 16 lanzar, 32 recargar, 64 cambiaLanzable, 128 táctil
   function comprimirCmd(c) {
-    const b = (c.correr ? 1 : 0) | (c.disparo ? 2 : 0) | (c.usar ? 4 : 0) | (c.usarToque ? 8 : 0) | (c.lanzar ? 16 : 0) | (c.recargar ? 32 : 0) | (c.cambiaLanzable ? 64 : 0) | (c.tactil ? 128 : 0);
+    const b = (c.correr ? 1 : 0) | (c.disparo ? 2 : 0) | (c.usar ? 4 : 0) | (c.usarToque ? 8 : 0) | (c.lanzar ? 16 : 0) | (c.recargar ? 32 : 0) | (c.cambiaLanzable ? 64 : 0) | (c.tactil ? 128 : 0) | (c.ping ? 256 : 0);
     return [c.seq, r2(c.avance), r2(c.lateral), b, Math.round(c.ang * 1000) / 1000, r2(c.pitch), c.arma || 0];
   }
   function expandirCmd(a) {
     const b = a[3];
-    return { seq: a[0], avance: a[1], lateral: a[2], correr: !!(b & 1), disparo: !!(b & 2), usar: !!(b & 4), usarToque: !!(b & 8), lanzar: !!(b & 16), recargar: !!(b & 32), cambiaLanzable: !!(b & 64), tactil: !!(b & 128), ang: a[4], pitch: a[5], arma: a[6], tolerancia: (b & 128) ? DM.config.ANGULO_APUNTAR_TACTIL : DM.config.ANGULO_APUNTAR };
+    return { seq: a[0], avance: a[1], lateral: a[2], correr: !!(b & 1), disparo: !!(b & 2), usar: !!(b & 4), usarToque: !!(b & 8), lanzar: !!(b & 16), recargar: !!(b & 32), cambiaLanzable: !!(b & 64), tactil: !!(b & 128), ping: !!(b & 256), ang: a[4], pitch: a[5], arma: a[6], tolerancia: (b & 128) ? DM.config.ANGULO_APUNTAR_TACTIL : DM.config.ANGULO_APUNTAR };
   }
   // Une los toques de un comando descartado con el siguiente (para no perderlos)
   function unirToques(a, b) {
     b.usarToque = b.usarToque || a.usarToque; b.lanzar = b.lanzar || a.lanzar; b.recargar = b.recargar || a.recargar;
-    b.cambiaLanzable = b.cambiaLanzable || a.cambiaLanzable; if (!b.arma) b.arma = a.arma;
+    b.cambiaLanzable = b.cambiaLanzable || a.cambiaLanzable; b.ping = b.ping || a.ping; if (!b.arma) b.arma = a.arma;
     return b;
   }
 
@@ -89,7 +89,7 @@
     m.re = mundo.reglas.estado();
     m.sw = mundo.interruptores.map(function (s) { return [r1(s.mantenido - mundo.tiempo), r1(s.activoHasta - mundo.tiempo), s.activador]; });
     // Solo si cambiaron:
-    const ob = mundo.items.map(function (it) { return [it.id, it.tipo, it.piso, r2(it.x), r2(it.y), it.activo ? 1 : 0, it.premio ? 1 : 0]; });
+    const ob = mundo.items.map(function (it) { return [it.id, it.tipo, it.piso, r2(it.x), r2(it.y), it.activo ? 1 : 0, it.premio ? 1 : 0, it.parpadea ? 1 : 0]; });
     const kOb = JSON.stringify(ob);
     if (kOb !== ant.ob) { m.ob = ob; ant.ob = kOb; }
     const pu = mundo.mapa.puertas.map(function (p) { return r1(p.apertura); });

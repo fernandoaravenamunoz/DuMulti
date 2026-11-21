@@ -28,6 +28,8 @@
       trampas: true,
       interruptores: true,
       asistencia: true,
+      arena: 'auto',             // 'auto' (chica con 4 jugadores o menos) | 'chica' | 'grande'
+      delatar: true,             // quien dispara un arma a distancia aparece 2 s en el mapa de sus rivales
       espera: 3,                 // segundos para reaparecer: 0, 3 o 5
       castigoEnemigo: 0          // puntos al morir por zombi o robot: 0 o −1
     };
@@ -64,6 +66,24 @@
 
   DM.Partida = {
     versusBase: versusBase,
+    // v1.2: objetos que sueltan los enemigos al morir (probabilidad 0..1 por tipo)
+    //   vida: elixir pequeño · municion: munición del arma pesada de quien lo mató
+    SUELTAN: {
+      lento: { vida: 0.15, municion: 0.2 }, corredor: { vida: 0.15, municion: 0.2 }, hinchado: { vida: 0.15, municion: 0.2 },
+      dron: { vida: 0.3, municion: 0.2 }, guardian: { vida: 1, municion: 1 }
+    },
+    SOLTADOS_DURAN: 20,         // segundos antes de desaparecer (parpadean los últimos 5)
+    RIVAL_SUELTA_VIDA: true,    // versus: un rival que muere suelta además un elixir pequeño
+    // v1.2: daño de las trampas según a quién golpean (1 = completo)
+    TRAMPAS_A_ENEMIGOS: 0.4,
+    TRAMPAS_A_JUGADORES: 1,
+    // Arena del versus según la opción ARENA y la cantidad de jugadores
+    ARENA_CHICA_HASTA: 4,
+    arenaVersus: function (arena, jugadores) {
+      if (arena === 'chica') return 'arena_chica';
+      if (arena === 'grande') return 'reactor';
+      return (jugadores || 1) <= 4 ? 'arena_chica' : 'reactor';
+    },
     coopBase: coopBase,
     RAPIDAS: RAPIDAS,
     OLEADAS: OLEADAS,

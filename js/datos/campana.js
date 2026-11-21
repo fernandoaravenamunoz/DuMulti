@@ -19,7 +19,7 @@
 
   DM.CAMPANA = [
     {
-      id: 's1', nombre: 'SECTOR 1 - BLOQUE CRIOGENICO', mapa: 'sector4',
+      id: 's1', tiempoMeta: 240, nombre: 'SECTOR 1 - BLOQUE CRIOGENICO', mapa: 'sector4',
       intro: 'LOS DORMIDOS DESPIERTAN. RESISTE Y BUSCA LA ESCOTILLA DEL REACTOR.',
       fases: [
         { tipo: 'oleadas', texto: 'SOBREVIVE A LAS OLEADAS', oleadas: [{ lento: 5 }, { lento: 7, corredor: 2 }, { lento: 8, corredor: 4, hinchado: 1 }, { lento: 8, corredor: 5, hinchado: 2, dron: 1 }], premios: { 3: 'elixirTotal' } },
@@ -27,15 +27,16 @@
       ]
     },
     {
-      id: 's2', nombre: 'SECTOR 2 - PASARELAS INDUSTRIALES', mapa: 'pasarelas',
+      id: 's2', tiempoMeta: 210, nombre: 'SECTOR 2 - PASARELAS INDUSTRIALES', mapa: 'pasarelas',
       intro: 'SIN ENERGIA NO HAY ASCENSOR AL SIGUIENTE SECTOR. REACTIVA LAS 3 CONSOLAS.',
       fases: [
-        { tipo: 'activar', texto: 'ACTIVA LAS CONSOLAS DE ENERGIA', tiempo: 4, goteo: { tipos: ZOMBIS, cada: 2.2, max: 14 }, premios: { inicio: 'blindajeTotal' } },
+        // juntas: con 2 o más jugadores, las consolas 0 (sala NO) y 1 (bodega SE) se mantienen A LA VEZ
+        { tipo: 'activar', texto: 'ACTIVA LAS CONSOLAS DE ENERGIA', tiempo: 4, juntas: [0, 1], goteo: { tipos: ZOMBIS, cada: 2.2, max: 14 }, premios: { inicio: 'blindajeTotal' } },
         { tipo: 'salida', texto: 'VUELVAN AL MONTACARGAS DEL ESTE', goteo: { tipos: ZOMBIS.concat(['dron']), cada: 2.5, max: 12 } }
       ]
     },
     {
-      id: 's3', nombre: 'SECTOR 3 - LABORATORIOS DE SEGURIDAD', mapa: 'laboratorios',
+      id: 's3', tiempoMeta: 300, nombre: 'SECTOR 3 - LABORATORIOS DE SEGURIDAD', mapa: 'laboratorios',
       intro: 'LOS DRONES PROTEGEN LOS LABORATORIOS. ABRANSE PASO HASTA LA ESCLUSA.',
       fases: [
         { tipo: 'oleadas', texto: 'RESISTAN A LOS DRONES', oleadas: [{ lento: 6, dron: 2 }, { corredor: 6, dron: 3 }, { lento: 8, hinchado: 2, dron: 4 }, { lento: 6, corredor: 6, dron: 5 }, { lento: 10, corredor: 6, hinchado: 3, dron: 6 }], premios: { 2: 'elixirTotal', 4: 'nucleo' } },
@@ -43,14 +44,14 @@
       ]
     },
     {
-      id: 's4', nombre: 'SECTOR 4 - NUCLEO DEL REACTOR', mapa: 'reactor',
+      id: 's4', tiempoMeta: 180, nombre: 'SECTOR 4 - NUCLEO DEL REACTOR', mapa: 'reactor',
       intro: 'EL GUARDIAN DEL REACTOR BLOQUEA EL CAMINO AL HANGAR. DESTRUYANLO.',
       fases: [
         { tipo: 'jefe', texto: 'DERROTA AL ROBOT GUARDIAN', aparece: { piso: 0, x: 11.5, y: 18.5 }, goteo: { tipos: ['lento', 'corredor', 'dron'], cada: 3, max: 10 }, premios: { inicio: 'nucleo', 20: 'arma:desintegrador' } }
       ]
     },
     {
-      id: 's5', nombre: 'SECTOR 5 - HANGAR', mapa: 'hangar',
+      id: 's5', tiempoMeta: 240, nombre: 'SECTOR 5 - HANGAR', mapa: 'hangar',
       intro: 'LA NAVE SALVAVIDAS ESTA LISTA. ENCIENDANLA, RESISTAN Y SUBAN A BORDO.',
       fases: [
         { tipo: 'activar', texto: 'ENCIENDE LA NAVE DESDE LA TORRE DE CONTROL', tiempo: 6, goteo: { tipos: ZOMBIS, cada: 2.5, max: 10 } },
@@ -66,7 +67,8 @@
 
 // =====================================================
 // Progreso de la campaña (se guarda en este navegador / este teléfono)
-//   { completados: { s1: true, ... } }
+//   { completados: { s1: true, ... }, medallas: { s1: { sinReimpresiones, rapido, archivista } } }
+// Los tiempos meta de la medalla RAPIDO (tiempoMeta, en segundos) son provisorios: ajustarlos tras jugar.
 // =====================================================
 (function () {
   'use strict';
@@ -93,6 +95,15 @@
     },
     cuantos: function () { const d = leer(); return DM.CAMPANA.filter(function (n) { return d.completados[n.id]; }).length; },
     disponibles: function () { const self = this; return DM.CAMPANA.filter(function (n) { return self.disponible(n.id); }).map(function (n) { return n.id; }); },
-    borrar: function () { guardar({ completados: {} }); }
+    borrar: function () { guardar({ completados: {} }); },
+    // v1.2: medallas por sector ({ sinReimpresiones, rapido, archivista }); se suman, nunca se pierden
+    medallas: function (id) { const d = leer(); return (d.medallas && d.medallas[id]) || {}; },
+    ganarMedallas: function (id, nuevas) {
+      const d = leer(); d.medallas = d.medallas || {}; const m = d.medallas[id] = d.medallas[id] || {};
+      const ganadas = [];
+      for (const k in nuevas) if (nuevas[k] && !m[k]) { m[k] = true; ganadas.push(k); }
+      guardar(d);
+      return ganadas;
+    }
   };
 })();

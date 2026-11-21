@@ -61,6 +61,7 @@
     });
     DM.Trampas.preparar(this);
     if (!this.cliente) DM.Objetos.preparar(this);
+    this.secretosHallados = [];             // v1.2: índices de mapa.secretos encontrados
     this.nivel = opciones.nivel || null;     // campaña: id del sector (js/datos/campana.js)
     this.reglas = this.modo === 'versus' ? new DM.Reglas.Versus(this)
       : this.nivel ? new DM.Reglas.Campana(this, this.nivel) : new DM.Reglas.Coop(this);
@@ -151,6 +152,8 @@
   Mundo.prototype.danar = function (ob, n, info) {
     if (!ob || n <= 0) return false;
     const tipo = info.tipo, a = info.atacante;
+    // v1.2: las trampas dañan menos a los enemigos (para que no "jueguen solas")
+    if (tipo === 'trampa') n *= ob.clase === 'enemigo' ? DM.Partida.TRAMPAS_A_ENEMIGOS : ob.clase === 'jugador' ? DM.Partida.TRAMPAS_A_JUGADORES : 1;
     if (ob.clase === 'jugador') {
       if (ob.estado !== 'vivo') return false;
       if ((ob.ef.proteccion > 0 || ob.ef.dios > 0) && tipo !== 'aplastar') return false;
@@ -172,6 +175,7 @@
       if (a && a !== ob) { ob.ultimoAtacante = a.id; ob.tUltimoAtacante = 4; }
       if (tipo === 'bala' || tipo === 'melee' || tipo === 'explosion' || tipo === 'suprema') {
         this.evento({ t: 'herido', id: ob.id, n: Math.round(n), dx: a ? a.x : null, dy: a ? a.y : null });
+        if (a && a.clase === 'jugador' && a !== ob) this.evento({ t: 'acierto', de: a.id, a: ob.id, baja: ob.vida <= 0 });
       }
       if (ob.vida <= 0) {
         ob.vida = 0;
@@ -181,7 +185,9 @@
           if (ult && ult.clase === 'jugador' && ob.tUltimoAtacante > 0 && this.sonRivales(ult, ob) && !info.trampaDe) info = Object.assign({}, info, { atacante: ult });
         }
         this.reglas.alMorirJugador(ob, info);
-        this.evento({ t: 'muerte', id: ob.id, piso: ob.piso, x: ob.x, y: ob.y });
+        const ca = info.atacante;
+        const causa = ca && ca.clase === 'enemigo' ? ca.tipo : ca && ca.clase === 'jugador' ? (ca === ob ? 'propio' : 'jugador') : info.trampa ? 'trampa ' + info.trampa : tipo;
+        this.evento({ t: 'muerte', id: ob.id, piso: ob.piso, x: ob.x, y: ob.y, causa: causa });
       }
       return true;
     }
@@ -190,10 +196,20 @@
       const d = DM.ENEMIGOS[ob.tipo];
       if (d.blindaje) n *= d.blindaje;
       ob.vida -= n;
-      if (tipo === 'bala' || tipo === 'melee' || tipo === 'explosion') this.evento({ t: 'golpeEnemigo', piso: ob.piso, x: ob.x, y: ob.y, z: ob.z + ob.alto * 0.6, robot: !!d.robot });
+      if (tipo === 'bala' || tipo === 'melee' || tipo === 'explosion' || tipo === 'suprema') {
+        this.evento({ t: 'golpeEnemigo', piso: ob.piso, x: ob.x, y: ob.y, z: ob.z + ob.alto * 0.6, robot: !!d.robot });
+        if (a && a.clase === 'jugador') this.evento({ t: 'acierto', de: a.id, a: ob.id, baja: ob.vida <= 0 });
+        // Retroceso: el golpe lo empuja hacia atrás (menos a los robots y a los pesados)
+        if (a && tipo !== 'explosion') {
+          const dx = ob.x - a.x, dy = ob.y - a.y, dd = Math.hypot(dx, dy) || 1;
+          const k = Math.min(C.RETROCESO_MAX, n * C.RETROCESO_POR_DANIO) * (d.robot ? 0.35 : 1) * Math.min(1, 80 / ob.vidaMax);
+          ob.golpeX += dx / dd * k; ob.golpeY += dy / dd * k;
+        }
+      }
       if (ob.vida <= 0) {
         ob.muerto = true; ob.tMuerto = 0;
         this.reglas.alMorirEnemigo(ob, info);
+        DM.Objetos.alMorirEnemigo(this, ob, a || info.trampaDe);
         this.evento({ t: 'muereEnemigo', tipo: ob.tipo, piso: ob.piso, x: ob.x, y: ob.y, z: ob.z });
         if (d.gasAlMorir) this.nubes.push({ piso: ob.piso, x: ob.x, y: ob.y, radio: 1.4, hasta: this.tiempo + 4 });
       }
@@ -239,6 +255,40 @@
       return { tipo: t, dist: dist, mx: mx, my: my };
     }
     return { tipo: 0, dist: maxDist, mx: mx, my: my };
+  };
+  // Pared falsa: se abre (queda libre) y avisa a todos
+  Mundo.prototype.abrirFalsa = function (piso, x, y) {
+    const p = this.mapa.pisos[piso], i = p.indice(x, y);
+    if (p.paredes[i] !== DM.PARED.FALSA) return;
+    p.paredes[i] = 0; p.paredOriginal[i] = 0;
+    this.evento({ t: 'rejilla', piso: piso, x: x, y: y, falsa: true });
+  };
+  // Ping (v1.2): marca lo que el jugador está mirando (enemigo, objeto o lugar) por 4 s
+  Mundo.prototype.marcarPing = function (j) {
+    if (this.tiempo < (j.tPing || 0)) return;
+    j.tPing = this.tiempo + 1;
+    const cx = Math.cos(j.ang), cy = Math.sin(j.ang), mapa = this.mapa;
+    let mejor = null, md = 1e9, que = 'lugar';
+    const mirar = function (ob, max, tol) {
+      if (ob.piso !== j.piso) return false;
+      const dx = ob.x - j.x, dy = ob.y - j.y, d = Math.hypot(dx, dy);
+      if (d > max || d < 0.3) return false;
+      const desvio = Math.abs(Math.atan2(cx * dy - cy * dx, cx * dx + cy * dy));
+      if (desvio > Math.max(tol, 0.35 / d)) return false;
+      if (!mapa.lineaVision(j.piso, j.x, j.y, ob.x, ob.y)) return false;
+      if (d < md) { md = d; mejor = ob; }
+      return true;
+    };
+    for (const e of this.enemigos) if (!e.muerto && mirar(e, 25, 0.1)) que = 'enemigo';
+    if (!mejor) for (const it of this.items) if (it.activo && mirar(it, 15, 0.12)) que = 'objeto';
+    let x, y;
+    if (mejor) { x = mejor.x; y = mejor.y; }
+    else {
+      const g = this.rayoPared(j.piso, j.x, j.y, cx, cy, 30);
+      const d = Math.max(0.5, g.dist - 0.25);
+      x = j.x + cx * d; y = j.y + cy * d;
+    }
+    this.evento({ t: 'ping', de: j.id, piso: j.piso, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, sigue: que === 'enemigo' ? mejor.id : null, que: que });
   };
   Mundo.prototype.romperRejilla = function (piso, x, y) {
     const p = this.mapa.pisos[piso], i = p.indice(x, y);
@@ -312,11 +362,22 @@
     }
     // Paredes al frente: puerta, interruptor o registro
     const lejos = j.personaje === 'pirulo' ? C.DIST_USAR * 4 : C.DIST_USAR;
+    const ruta = function (tipo, x, y) { return mapa.rutas.find(function (r) { return r.tipo === tipo && r.piso === j.piso && r.x === x && r.y === y; }); };
+    const alcance = mapa.rutas.length ? C.DIST_USAR * 4 : lejos;   // para avisar de las rutas de personaje
     const desvios = [0, -1, 1, -0.5, 0.5];
     for (const d of desvios) {
       const a = j.ang + d * (tolerancia || 0);
-      const g = this.rayoPared(j.piso, j.x, j.y, Math.cos(a), Math.sin(a), lejos);
+      const g = this.rayoPared(j.piso, j.x, j.y, Math.cos(a), Math.sin(a), alcance);
       if (!g.tipo) continue;
+      // Rutas de personaje (v1.2): rejilla de Gargolfo y panel lejano de Pirulo
+      if (g.tipo === DM.PARED.REJILLA && g.dist <= C.DIST_USAR + 0.4 && ruta('gargolfo', g.mx, g.my))
+        return { accion: 'info', texto: j.personaje === 'gargolfo' ? 'GOLPEA CON EL FIERRO (2) PARA ROMPERLA' : 'SOLO GARGOLFO PUEDE ROMPER ESTA REJILLA' };
+      if (g.tipo === DM.PARED.INTERRUPTOR && g.dist > lejos) {
+        if (ruta('pirulo', g.mx, g.my)) return { accion: 'info', texto: 'SOLO PIRULO ALCANZA ESTE PANEL DESDE AQUI' };
+        continue;
+      }
+      if (g.tipo === DM.PARED.FALSA && g.dist <= C.DIST_USAR) return { accion: 'falsa', x: g.mx, y: g.my, texto: '' };
+      if (g.dist > lejos) continue;
       if (g.tipo === DM.PARED.INTERRUPTOR) {
         const s = mapa.interruptores.find(function (s) { return s.piso === j.piso && s.x === g.mx && s.y === g.my; });
         if (s) return { accion: 'interruptor', k: s.k, texto: this.modo === 'coop' ? 'MANTEN PARA APAGAR LAS TRAMPAS' : 'ACTIVAR LAS TRAMPAS' };
@@ -372,13 +433,24 @@
           if (f.accion === 'puerta') this.abrirPuerta(f.puerta);
           else if (f.accion === 'ascensor') this.iniciarTransicion(j, mapa.extremos[f.extremo].otro);
           else if (f.accion === 'leer') this.leer(j, f.id);
+          else if (f.accion === 'falsa') this.abrirFalsa(j.piso, f.x, f.y);
           else if (f.accion === 'interruptor' && this.modo === 'versus') DM.Trampas.usarInterruptor(this, f.k, j, false);
         }
         if (f && cmd.usar && f.accion === 'interruptor' && this.modo === 'coop') DM.Trampas.usarInterruptor(this, f.k, j, true);
         if (f && cmd.usar && f.accion === 'consola' && this.reglas.usarConsola) this.reglas.usarConsola(f.k, j, dt);
         DM.Combate.accionesJugador(this, j, cmd, dt);
+        if (cmd.ping) this.marcarPing(j);
       }
 
+      // Secretos (v1.2): se encuentran al pisar la casilla
+      if (j.estado === 'vivo' && mapa.secretos.length) {
+        const cx = Math.floor(j.x), cy = Math.floor(j.y);
+        for (const s of mapa.secretos) {
+          if (this.secretosHallados.indexOf(s.k) >= 0 || s.piso !== j.piso || s.x !== cx || s.y !== cy) continue;
+          this.secretosHallados.push(s.k);
+          this.evento({ t: 'secreto', k: s.k, id: j.id, n: this.secretosHallados.length, total: mapa.secretos.length });
+        }
+      }
       // Escaleras: cambian de piso al pisarlas
       const p = mapa.pisos[j.piso];
       const ie = p.enlace[p.indice(Math.floor(j.x), Math.floor(j.y))];

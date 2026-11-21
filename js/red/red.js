@@ -49,7 +49,7 @@
   // =====================================================
   // SALA DE ESPERA
   // =====================================================
-  function difundirSala() { if (R.rol === 'anfitrion') { tr.difundir({ t: 'sala', s: R.sala }); if (R.al.sala) R.al.sala(); } }
+  function difundirSala() { if (R.rol === 'anfitrion') { R.sala.mapa = mapaDeSala(R.sala); tr.difundir({ t: 'sala', s: R.sala }); if (R.al.sala) R.al.sala(); } }
 
   R.crear = function (personaje) {
     R.salir();
@@ -148,7 +148,8 @@
   // Modos de la sala: 'campana' (sector elegido), 'coop' (oleadas del sector 1) y 'versus'
   function mapaDeSala(s) {
     if (s.modo === 'campana') return (DM.CAMPANA_POR_ID[s.nivel] || DM.CAMPANA[0]).mapa;
-    return s.modo === 'coop' ? 'sector4' : 'reactor';
+    if (s.modo === 'coop') return 'sector4';
+    return DM.Partida.arenaVersus(s.versus && s.versus.arena, s.jugadores ? s.jugadores.length : 1);
   }
   R.todosListos = function () { return R.sala && R.sala.jugadores.every(function (j) { return j.listo; }); };
 
@@ -293,7 +294,7 @@
     const ult = buffer[buffer.length - 1];
     const m = ult.m;
     // --- Estado "lento" de la última instantánea ---
-    if (m.ob) mundo.items = m.ob.map(function (a) { return { id: a[0], tipo: a[1], piso: a[2], x: a[3], y: a[4], activo: !!a[5], premio: !!a[6] }; });
+    if (m.ob) mundo.items = m.ob.map(function (a) { return { id: a[0], tipo: a[1], piso: a[2], x: a[3], y: a[4], activo: !!a[5], premio: !!a[6], parpadea: !!a[7] }; });
     if (m.pu) m.pu.forEach(function (v, k) { if (mundo.mapa.puertas[k]) mundo.mapa.puertas[k].apertura = v; });
     if (m.ba) mundo.barriles.forEach(function (b, k) {
       const muerto = m.ba[k] === '1';

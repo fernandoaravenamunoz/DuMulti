@@ -105,7 +105,8 @@ DM.PARED = {
   APLASTADOR: 14,    // la casilla del aplastador cuando se cierra
   REACTOR: 15,       // pared del núcleo del reactor (decorativa, emisiva)
   CONSOLA: 16,       // consola de objetivo de la campaña (se activa manteniendo USAR)
-  NAVE: 17           // casco de la nave salvavidas (hangar)
+  NAVE: 17,          // casco de la nave salvavidas (hangar)
+  FALSA: 18          // pared falsa (secreto): se ve casi igual a una pared y se abre con USAR
 };
 DM.PAREDES = {
   1: { nombre: 'PARED', metal: true }, 2: { nombre: 'PANEL NEON', metal: true }, 3: { nombre: 'TUBERIAS', metal: true },
@@ -116,7 +117,8 @@ DM.PAREDES = {
   11: { nombre: 'INTERRUPTOR', metal: true }, 12: { nombre: 'TERMINAL' },
   13: { nombre: 'COMPUERTA DE SECUENCIA', puerta: true, metal: true },
   14: { nombre: 'APLASTADOR', metal: true }, 15: { nombre: 'REACTOR' },
-  16: { nombre: 'CONSOLA' }, 17: { nombre: 'NAVE SALVAVIDAS', metal: true }
+  16: { nombre: 'CONSOLA' }, 17: { nombre: 'NAVE SALVAVIDAS', metal: true },
+  18: { nombre: 'PARED', metal: true, falsa: true }
 };
 
 // ---------- Tipos de piso ----------
@@ -128,9 +130,14 @@ DM.SUELO = {
 };
 
 // ---------- Caracteres de los mapas ----------
+DM.AVISO_PREMIOS = 10;
+// v1.2: sensación de combate
+DM.config.RETROCESO_POR_DANIO = 0.12;   // empuje del enemigo por punto de daño
+DM.config.RETROCESO_MAX = 3.5;
+DM.config.ANTICIPO_ZOMBI = 0.3;         // segundos que el zombi "levanta los brazos" antes de golpear   // segundos de aviso antes de que reaparezca un premio mayor o el desintegrador
 DM.CAR_PARED = {
   '#': 1, 'N': 2, 'T': 3, 'P': 4, 'A': 5, 'R': 6, 'C': 7, 'D': 8, 'L': 9, 'H': 10,
-  'I': 11, 'Q': 12, 'S': 13, 'X': 15, 'O': 16, 'V': 17
+  'I': 11, 'Q': 12, 'S': 13, 'X': 15, 'O': 16, 'V': 17, 'F': 18
 };
 DM.CAR_SUELO = {
   '.': 0, ' ': 0, ',': 1, '~': 2, '=': 3, 's': 4, 'e': 5, 'r': 6, '*': 7, '!': 8

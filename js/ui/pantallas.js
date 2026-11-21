@@ -56,6 +56,14 @@
   }
 
   // ---------- Campaña: elegir sector ----------
+  // Medallas (v1.2)
+  const MEDALLAS = [['sinReimpresiones', 'S', 'SIN REIMPRESIONES'], ['rapido', 'R', 'RAPIDO'], ['archivista', 'A', 'ARCHIVISTA']];
+  function medalla(ctx, x, y, letra, ganada, nueva) {
+    ctx.fillStyle = ganada ? (nueva ? PAL.amarilloClaro : PAL.verde) : '#2a2a3c';
+    ctx.fillRect(x, y, 9, 9);
+    TXT.texto(ctx, letra, x + 5, y + 2, ganada ? '#07060d' : PAL.grisOsc, 1, 'centro');
+  }
+  function reloj(s) { s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
   const FASES_NOMBRE = { oleadas: 'OLEADAS', activar: 'CONSOLAS', jefe: 'JEFE', resistir: 'RESISTIR', salida: 'SALIDA' };
   function campana(ctx, t, S, A) {
     velo(ctx, 0.9);
@@ -69,7 +77,10 @@
       TXT.texto(ctx, n.nombre.replace(/^SECTOR \d - /, ''), 28, y + 4, disp ? PAL.blanco : PAL.grisOsc);
       TXT.texto(ctx, 'SECTOR ' + n.n, 28, y + 13, PAL.gris);
       TXT.texto(ctx, hecho ? 'SUPERADO' : disp ? 'DISPONIBLE' : 'BLOQUEADO', 214, y + 13, hecho ? PAL.verde : disp ? PAL.amarilloClaro : PAL.grisOsc, 1, 'der');
+      const md = DM.Progreso.medallas(n.id);
+      MEDALLAS.forEach(function (m, q) { medalla(ctx, 178 + q * 12, y + 3, m[1], !!md[m[0]]); });
     });
+    TXT.texto(ctx, 'MEDALLAS: S SIN REIMPRESIONES  R RAPIDO  A ARCHIVISTA', 20, 188, PAL.grisOsc);
     const n = DM.CAMPANA_POR_ID[S.nivelSel];
     UI.panel(ctx, 232, 30, 230, 126, PAL.cianOsc);
     TXT.texto(ctx, n.nombre, 240, 36, PAL.cianClaro);
@@ -185,7 +196,7 @@
       }
       TXT.texto(ctx, 'SECTOR ' + n.n, 76, 92, PAL.cianClaro, 1, 'centro');
       TXT.texto(ctx, n.nombre.replace(/^SECTOR \d - /, '').slice(0, 33), 76, 104, PAL.cian, 1, 'centro');
-    } else TXT.texto(ctx, s.modo === 'coop' ? 'SECTOR 1 - 8 OLEADAS' : 'SALA DEL REACTOR', 10, 92, PAL.cianOsc);
+    } else TXT.texto(ctx, s.modo === 'coop' ? 'SECTOR 1 - 8 OLEADAS' : (DM.mapas[s.mapa] || { nombre: '' }).nombre, 10, 92, PAL.cianOsc);
     if (s.modo === 'campana' || s.modo === 'coop') {
       const yb = s.modo === 'campana' ? 114 : 102;
       UI.boton(ctx, 10, yb, 132, 12, 'FUEGO AMIGO: ' + { no: 'NO', si: 'SI', explosivos: 'EXPLOSIVOS' }[s.coop.fuegoAmigo], { apagado: !anf, accion: function () { R.configurar(function (x) { x.coop.fuegoAmigo = { no: 'si', si: 'explosivos', explosivos: 'no' }[x.coop.fuegoAmigo]; }); } });
@@ -214,9 +225,9 @@
   const CICLOS = {
     modo: ['todos', 'equipos'], asignacion: ['auto', 'elegir'], fuegoAmigo: ['no', 'si', 'explosivos'],
     bajasMeta: [5, 10, 15, 20, 30, 50, 0], duracion: [3, 5, 10, 15, 20, 0], reaparicionObjetos: ['rapida', 'normal', 'lenta'],
-    cantidadEnemigos: ['pocos', 'normal', 'muchos'], espera: [0, 3, 5], castigoEnemigo: [0, -1]
+    cantidadEnemigos: ['pocos', 'normal', 'muchos'], espera: [0, 3, 5], castigoEnemigo: [0, -1], arena: ['auto', 'chica', 'grande']
   };
-  const NOMBRES = { todos: 'TODOS VS TODOS', equipos: 'EQUIPOS', auto: 'AUTOMATICA', elegir: 'CADA UNO ELIGE', no: 'NO', si: 'SI', explosivos: 'SOLO EXPLOSIVOS', rapida: 'RAPIDA', normal: 'NORMAL', lenta: 'LENTA', pocos: 'POCOS', muchos: 'MUCHOS' };
+  const NOMBRES = { todos: 'TODOS VS TODOS', equipos: 'EQUIPOS', auto: 'AUTOMATICA', elegir: 'CADA UNO ELIGE', no: 'NO', si: 'SI', explosivos: 'SOLO EXPLOSIVOS', rapida: 'RAPIDA', normal: 'NORMAL', lenta: 'LENTA', pocos: 'POCOS', muchos: 'MUCHOS', chica: 'CHICA (2 A 4)', grande: 'GRANDE (5 A 8)' };
   function valor(campo, v) {
     if (campo === 'bajasMeta') return v ? String(v) : 'SIN LIMITE';
     if (campo === 'duracion') return v ? v + ' MIN' : 'SIN LIMITE';
@@ -240,19 +251,23 @@
     if (pag === 0) {
       const filas = [
         ['MODO', 'modo'], ['ASIGNACION DE EQUIPOS', 'asignacion'], ['FUEGO AMIGO', 'fuegoAmigo'], ['BAJAS PARA GANAR', 'bajasMeta'],
-        ['DURACION', 'duracion'], ['ESPERA PARA REAPARECER', 'espera'], ['MORIR POR ZOMBI O ROBOT', 'castigoEnemigo']
+        ['DURACION', 'duracion'], ['ESPERA PARA REAPARECER', 'espera'], ['MORIR POR ZOMBI O ROBOT', 'castigoEnemigo'], ['ARENA', 'arena']
       ];
+      if (!c.arena) c.arena = 'auto';
       filas.forEach(function (f, k) { UI.opcion(ctx, 20, 42 + k * 14, 210, f[0], valor(f[1], c[f[1]]), ciclo(f[1]), !edita || (f[1] === 'asignacion' && c.modo !== 'equipos')); });
-      const extras = [['TRAMPAS', 'trampas'], ['INTERRUPTORES', 'interruptores'], ['ASISTENCIA DE PUNTERIA', 'asistencia'], ['SOLO ARMAS DE PERSONAJE', 'soloPropias']];
+      const nJug = R.sala ? R.sala.jugadores.length : 1;
+      TXT.texto(ctx, 'AHORA: ' + DM.mapas[DM.Partida.arenaVersus(c.arena, nJug)].nombre + ' (' + nJug + ' JUG.)', 20, 42 + 8 * 14 + 2, PAL.cianOsc);
+      if (c.delatar === undefined) c.delatar = true;
+      const extras = [['TRAMPAS', 'trampas'], ['INTERRUPTORES', 'interruptores'], ['ASISTENCIA DE PUNTERIA', 'asistencia'], ['SOLO ARMAS DE PERSONAJE', 'soloPropias'], ['DISPARAR TE DELATA', 'delatar']];
       extras.forEach(function (f, k) { UI.opcion(ctx, 250, 42 + k * 14, 210, f[0], siNo(c[f[1]]), toggle(null, f[1]), !edita); });
-      TXT.texto(ctx, 'CONFIGURACIONES RAPIDAS', 250, 104, PAL.gris);
+      TXT.texto(ctx, 'CONFIGURACIONES RAPIDAS', 250, 116, PAL.gris);
       let k = 0;
       for (const id in DM.Partida.RAPIDAS) {
-        UI.boton(ctx, 250 + (k % 2) * 106, 114 + Math.floor(k / 2) * 16, 102, 13, DM.Partida.RAPIDAS[id].nombre, { apagado: !edita, color: PAL.amarillo, accion: (function (q) { return function () { cambiar(function (v) { Object.assign(v, DM.Partida.versusBase()); DM.Partida.RAPIDAS[q].aplicar(v); }); }; })(id) });
+        UI.boton(ctx, 250 + (k % 2) * 106, 126 + Math.floor(k / 2) * 16, 102, 13, DM.Partida.RAPIDAS[id].nombre, { apagado: !edita, color: PAL.amarillo, accion: (function (q) { return function () { cambiar(function (v) { Object.assign(v, DM.Partida.versusBase()); DM.Partida.RAPIDAS[q].aplicar(v); }); }; })(id) });
         k++;
       }
-      UI.boton(ctx, 250, 150, 102, 13, 'GUARDAR PROPIA', { apagado: !edita, accion: function () { try { localStorage.setItem(C.CLAVE_CONFIG_VERSUS + '_propia', JSON.stringify(c)); S.aviso2 = 'CONFIGURACION GUARDADA'; } catch (err) { /* nada */ } } });
-      UI.boton(ctx, 356, 150, 102, 13, 'CARGAR PROPIA', { apagado: !edita, accion: function () { try { const g = JSON.parse(localStorage.getItem(C.CLAVE_CONFIG_VERSUS + '_propia') || 'null'); if (g) cambiar(function (v) { Object.assign(v, g); }); } catch (err) { /* nada */ } } });
+      UI.boton(ctx, 250, 162, 102, 13, 'GUARDAR PROPIA', { apagado: !edita, accion: function () { try { localStorage.setItem(C.CLAVE_CONFIG_VERSUS + '_propia', JSON.stringify(c)); S.aviso2 = 'CONFIGURACION GUARDADA'; } catch (err) { /* nada */ } } });
+      UI.boton(ctx, 356, 162, 102, 13, 'CARGAR PROPIA', { apagado: !edita, accion: function () { try { const g = JSON.parse(localStorage.getItem(C.CLAVE_CONFIG_VERSUS + '_propia') || 'null'); if (g) cambiar(function (v) { Object.assign(v, g); }); } catch (err) { /* nada */ } } });
     } else {
       TXT.texto(ctx, 'ARMAS DEL MAPA', 20, 40, PAL.amarillo);
       DM.ARMAS_PESADAS.concat(['desintegrador']).forEach(function (id, k) {
@@ -300,18 +315,71 @@
     UI.titulo(ctx, 'OPCIONES', 20);
     UI.inicio('opciones');
     controlesAudio(ctx, 157, 50, S, A);
-    TXT.texto(ctx, 'CALIDAD: ' + (DM.raycaster.calidad === 'alta' ? 'ALTA' : 'MEDIA') + ' (TECLA C)', W / 2, 140, PAL.gris, 1, 'centro');
+    TXT.texto(ctx, 'CALIDAD: ' + (DM.raycaster.calidad === 'alta' ? 'ALTA' : 'MEDIA') + ' (TECLA C)', W / 2, 128, PAL.gris, 1, 'centro');
     // Diagnóstico de la música: qué archivo busca y si lo encontró
     const em = DM.Audio.estadoMusica();
     const NOM = { menu: 'MENU', coop: 'OLEADAS', final: 'OLEADA FINAL', versus: 'VERSUS' };
     const EST = { ok: ['OK', PAL.verde], falta: ['NO ENCONTRADO (SUENA LA PISTA GENERADA)', PAL.rojo], bloqueada: ['BLOQUEADA: HAZ CLIC', PAL.amarillo], cargando: ['CARGANDO...', PAL.gris], 'sin cargar': ['HAZ CLIC PARA ACTIVAR EL SONIDO', PAL.gris] };
-    TXT.texto(ctx, 'MUSICA (CARPETA ASSETS/MUSICA)', 40, 154, PAL.cian);
+    TXT.texto(ctx, 'MUSICA (CARPETA ASSETS/MUSICA)', 40, 140, PAL.cian);
     ['menu', 'coop', 'final', 'versus'].forEach(function (u, k) {
       const e = EST[em[u].estado] || [em[u].estado.toUpperCase(), PAL.gris];
-      TXT.texto(ctx, NOM[u] + ': ' + em[u].archivo.replace('assets/musica/', ''), 40, 164 + k * 9, PAL.blanco);
-      TXT.texto(ctx, e[0], 440, 164 + k * 9, e[1], 1, 'der');
+      TXT.texto(ctx, NOM[u] + ': ' + em[u].archivo.replace('assets/musica/', ''), 40, 149 + k * 9, PAL.blanco);
+      TXT.texto(ctx, e[0], 440, 149 + k * 9, e[1], 1, 'der');
     });
-    UI.boton(ctx, 190, 210, 100, 16, 'VOLVER', { accion: function () { A.ir(S.volverDeOpciones || 'titulo'); } });
+    // Control USB o Bluetooth
+    const MD = DM.Mando, PM = MD.prefs;
+    TXT.texto(ctx, MD.conectado ? 'CONTROL: ' + MD.nombre.toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').slice(0, 40) : 'CONTROL: NO DETECTADO (APRIETA UN BOTON)', W / 2, 186, MD.conectado ? PAL.verde : PAL.grisOsc, 1, 'centro');
+    UI.boton(ctx, 60, 196, 170, 11, 'STICK: SENSIBILIDAD ' + PM.sens.toFixed(1).replace('.', ','), { accion: function () { PM.sens = PM.sens >= 2 ? 0.4 : Math.round((PM.sens + 0.2) * 10) / 10; MD.guardar(); } });
+    UI.boton(ctx, 250, 196, 170, 11, 'ZONA MUERTA ' + Math.round(PM.zonaMuerta * 100) + ' %', { accion: function () { PM.zonaMuerta = PM.zonaMuerta >= 0.4 ? 0.06 : Math.round((PM.zonaMuerta + 0.04) * 100) / 100; MD.guardar(); } });
+    UI.boton(ctx, 130, 210, 100, 16, 'ESTADISTICAS', { color: PAL.amarillo, accion: function () { S.estMapa = null; A.ir('estadisticas'); } });
+    UI.boton(ctx, 250, 210, 100, 16, 'VOLVER', { accion: function () { A.ir(S.volverDeOpciones || 'titulo'); } });
+  }
+
+  // ---------- Estadísticas (v1.2): mapa de calor de las muertes y tiempo por fase ----------
+  function estadisticas(ctx, t, S, A) {
+    velo(ctx, 0.94);
+    UI.titulo(ctx, 'ESTADISTICAS', 12, PAL.amarillo);
+    UI.inicio('estadisticas');
+    const lista = DM.Estadisticas.lista();
+    const mapas = [];
+    lista.forEach(function (p) { if (p.mapa && DM.mapas[p.mapa] && mapas.indexOf(p.mapa) < 0) mapas.push(p.mapa); });
+    TXT.texto(ctx, lista.length + ' PARTIDAS GUARDADAS EN ESTE DISPOSITIVO (MAXIMO 30)', W / 2, 28, PAL.gris, 1, 'centro');
+    if (!mapas.length) {
+      TXT.texto(ctx, 'TODAVIA NO HAY PARTIDAS TERMINADAS', W / 2, 110, PAL.grisOsc, 1, 'centro');
+    } else {
+      if (mapas.indexOf(S.estMapa) < 0) { S.estMapa = mapas[0]; S.estPiso = 0; }
+      const def = DM.mapas[S.estMapa], mapa = new DM.Mapa(def);
+      const piso = Math.min(S.estPiso || 0, mapa.pisos.length - 1), p = mapa.pisos[piso];
+      UI.boton(ctx, 10, 38, 150, 13, 'MAPA: ' + def.nombre.slice(0, 22), { accion: function () { S.estMapa = mapas[(mapas.indexOf(S.estMapa) + 1) % mapas.length]; S.estPiso = 0; } });
+      UI.boton(ctx, 10, 54, 150, 13, 'PISO ' + (piso + 1) + ' DE ' + mapa.pisos.length, { apagado: mapa.pisos.length < 2, accion: function () { S.estPiso = (piso + 1) % mapa.pisos.length; } });
+      // Plano del piso con las muertes encima
+      const tam = Math.floor(Math.min(170 / p.ancho, 170 / p.alto)), ox = 175, oy = 38;
+      const cuenta = new Uint16Array(p.ancho * p.alto); let max = 1;
+      const delMapa = lista.filter(function (q) { return q.mapa === S.estMapa; });
+      delMapa.forEach(function (q) { (q.muertes || []).forEach(function (m) { if (m.piso !== piso || !p.dentro(Math.floor(m.x), Math.floor(m.y))) return; const i = p.indice(Math.floor(m.x), Math.floor(m.y)); cuenta[i]++; if (cuenta[i] > max) max = cuenta[i]; }); });
+      for (let y = 0; y < p.alto; y++) for (let x = 0; x < p.ancho; x++) {
+        const i = p.indice(x, y);
+        ctx.fillStyle = p.paredes[i] ? '#2a2a3c' : '#0d0c16';
+        ctx.fillRect(ox + x * tam, oy + y * tam, tam, tam);
+        if (cuenta[i]) { ctx.fillStyle = 'rgba(255,59,59,' + (0.35 + 0.65 * cuenta[i] / max).toFixed(2) + ')'; ctx.fillRect(ox + x * tam, oy + y * tam, tam, tam); }
+      }
+      TXT.texto(ctx, 'ROJO: DONDE CAYERON (MAS FUERTE = MAS VECES)', ox, oy + p.alto * tam + 3, PAL.grisOsc);
+      // Causas y tiempos por fase
+      const causas = {}; let total = 0;
+      delMapa.forEach(function (q) { (q.muertes || []).forEach(function (m) { causas[m.causa] = (causas[m.causa] || 0) + 1; total++; }); });
+      TXT.texto(ctx, 'CAIDAS: ' + total, 10, 74, PAL.rojo);
+      Object.keys(causas).sort(function (a, b) { return causas[b] - causas[a]; }).slice(0, 5).forEach(function (c, k) { TXT.texto(ctx, String(c).toUpperCase().slice(0, 18) + ': ' + causas[c], 14, 84 + k * 9, PAL.gris); });
+      const fases = {};
+      delMapa.forEach(function (q) { (q.fases || []).forEach(function (f) { const e = fases[f.nombre] = fases[f.nombre] || [0, 0]; e[0] += f.s; e[1]++; }); });
+      TXT.texto(ctx, 'TIEMPO MEDIO POR FASE', 10, 134, PAL.cian);
+      Object.keys(fases).slice(0, 7).forEach(function (f, k) { TXT.texto(ctx, f.slice(0, 20) + ': ' + reloj(fases[f][0] / fases[f][1]), 14, 144 + k * 9, PAL.gris); });
+      const gan = delMapa.filter(function (q) { return q.resultado === 'victoria'; }).length;
+      TXT.texto(ctx, 'PARTIDAS: ' + delMapa.length + (delMapa[0] && delMapa[0].modo !== 'versus' ? '  GANADAS: ' + gan : ''), 10, 210, PAL.blanco);
+    }
+    UI.boton(ctx, 10, 240, 110, 14, 'COPIAR (JSON)', { apagado: !lista.length, accion: function () { A.copiar(DM.Estadisticas.json()); S.aviso2 = 'DATOS COPIADOS: PEGALOS EN EL CHAT'; } });
+    UI.boton(ctx, 126, 240, 90, 14, 'BORRAR', { color: PAL.magenta, apagado: !lista.length, accion: function () { DM.Estadisticas.borrar(); } });
+    UI.boton(ctx, 370, 240, 100, 14, 'VOLVER', { accion: function () { A.ir('opciones'); } });
+    if (S.aviso2) TXT.texto(ctx, S.aviso2, 222, 244, PAL.verde);
   }
 
   // ---------- Pausa (en red la partida sigue corriendo) ----------
@@ -397,7 +465,17 @@
       const ultimo = n.n === DM.CAMPANA.length;
       TXT.textoNeon(ctx, gano ? (ultimo ? 'ESCAPARON' : 'SECTOR SUPERADO') : 'EQUIPO PERDIDO', W / 2, 16, gano ? PAL.verde : PAL.rojo, gano ? PAL.verde : PAL.rojoOsc, 4, 'centro');
       const sig = DM.Progreso.siguiente(n.id);
-      TXT.texto(ctx, gano ? (ultimo ? n.final : 'SE DESBLOQUEO EL ' + DM.CAMPANA_POR_ID[sig].nombre) : n.nombre + ': CAYERON EN EL OBJETIVO ' + res.fase + ' DE ' + res.fases, W / 2, 46, PAL.blanco, 1, 'centro');
+      TXT.texto(ctx, gano ? (ultimo ? n.final : 'SE DESBLOQUEO EL ' + DM.CAMPANA_POR_ID[sig].nombre) : n.nombre + ': CAYERON EN EL OBJETIVO ' + res.fase + ' DE ' + res.fases, W / 2, 40, PAL.blanco, 1, 'centro');
+      // Medallas de esta partida (amarillas si son nuevas) y secretos encontrados
+      let xm = 78;
+      MEDALLAS.forEach(function (m) {
+        const g = res.medallas && res.medallas[m[0]], nueva = (res.medallasNuevas || []).indexOf(m[0]) >= 0;
+        medalla(ctx, xm, 50, m[1], g, nueva);
+        const txt = m[2] + (m[0] === 'rapido' ? ' ' + reloj(res.tiempo) + '/' + reloj(n.tiempoMeta) : '');
+        TXT.texto(ctx, txt, xm + 12, 52, g ? (nueva ? PAL.amarilloClaro : PAL.verde) : PAL.grisOsc);
+        xm += DM.fuente.ancho(txt) + 22;
+      });
+      if (res.secretos && res.secretos[1]) TXT.texto(ctx, 'SECRETOS ' + res.secretos[0] + '/' + res.secretos[1], 402, 52, res.secretos[0] === res.secretos[1] ? PAL.verde : PAL.gris, 1, 'der');
     } else if (res.modo === 'coop') {
       const gano = res.resultado === 'victoria';
       TXT.textoNeon(ctx, gano ? 'SECTOR LIMPIO' : 'EQUIPO PERDIDO', W / 2, 16, gano ? PAL.verde : PAL.rojo, gano ? PAL.verde : PAL.rojoOsc, 4, 'centro');
@@ -470,7 +548,7 @@
   }
 
   DM.Pantallas = {
-    titulo: titulo, solo: solo, campana: campana, final: final, seleccion: seleccion, redMenu: redMenu, codigo: codigo, sala: sala,
+    titulo: titulo, solo: solo, campana: campana, final: final, seleccion: seleccion, estadisticas: estadisticas, redMenu: redMenu, codigo: codigo, sala: sala,
     configVersus: configVersus, opciones: opciones, pausa: pausa, controles: controles, archivo: archivo,
     resultados: resultados, creditos: creditos, registro: registro, velo: velo
   };

@@ -19,9 +19,9 @@
       {
         nombre: 'PISO 1 - LABORATORIOS',
         mapa: [
-          '########################',
-          '###########,############',
-          '##........#,##........##',
+          '###########I############',
+          '#####F#####lR.##########',
+          '##........#l##........##',
           '##.C....C.#S##...Z.r..##',
           '##........#,##..23123.##',
           '##..Z.....D,D...23123.##',
@@ -71,7 +71,7 @@
           '##........#ll#..====..##',
           '##......Z.#,,#.Z......##',
           '##........#,,A........##',
-          '###########,,###########',
+          '###########,,#####F#####',
           '########################'
         ],
         lamparas: [[5, 5], [18, 5], [5, 18], [18, 18], [11, 11, 'parpadea'], [12, 3], [12, 20], [4, 11], [20, 12]]
@@ -108,8 +108,31 @@
     ],
     suprema: { piso: 1, x: 12, y: 22 },
 
+    // v1.2: zonas con nombre (la primera que contiene el punto gana) y su color de luz
+    zonas: [
+      { piso: 0, nombre: 'LABORATORIO DE CRIOGENIA', x0: 2, y0: 2, x1: 9, y1: 9, luz: '#22e4ff' },
+      { piso: 0, nombre: 'SALA DE BALDOSAS', x0: 14, y0: 2, x1: 21, y1: 9, luz: '#ffd34a' },
+      { piso: 0, nombre: 'LABORATORIO DE RADIACION', x0: 2, y0: 14, x1: 9, y1: 21, luz: '#4dff8a' },
+      { piso: 0, nombre: 'ESCLUSA', x0: 14, y0: 14, x1: 21, y1: 21, luz: '#e6e3ff' },
+      { piso: 0, nombre: 'CRUCE CENTRAL', x0: 1, y0: 10, x1: 22, y1: 13, luz: '#ff3b3b' },
+      { piso: 0, nombre: 'PASILLO NORTE', x0: 10, y0: 1, x1: 13, y1: 9, luz: '#e6e3ff' },
+      { piso: 0, nombre: 'PASILLO SUR', x0: 10, y0: 14, x1: 13, y1: 22, luz: '#e6e3ff' },
+      { piso: 1, nombre: 'OBSERVATORIO NO', x0: 2, y0: 2, x1: 9, y1: 9, luz: '#22e4ff' },
+      { piso: 1, nombre: 'OBSERVATORIO NE', x0: 14, y0: 2, x1: 21, y1: 9, luz: '#ffd34a' },
+      { piso: 1, nombre: 'OBSERVATORIO SO', x0: 2, y0: 14, x1: 9, y1: 21, luz: '#4dff8a' },
+      { piso: 1, nombre: 'OBSERVATORIO SE', x0: 14, y0: 14, x1: 21, y1: 21, luz: '#e6e3ff' },
+      { piso: 1, nombre: 'PASARELA CENTRAL', x0: 1, y0: 1, x1: 22, y1: 22, luz: '#ff3b3b' }
+    ],
+    // v1.2: rutas de personaje y secretos (premio de una sola vez al pisar la casilla)
+    rutas: [{ tipo: 'pirulo', piso: 0, x: 11, y: 0 }, { tipo: 'gargolfo', piso: 0, x: 12, y: 1 }],
+    secretos: [
+      { piso: 0, x: 13, y: 1, tipo: 'blindajeTotal', nombre: 'NICHO DE GARGOLFO' },
+      { piso: 0, x: 5, y: 1, tipo: 'elixirTotal', nombre: 'PARED FALSA' },
+      { piso: 1, x: 18, y: 22, tipo: 'lanz:torreta', nombre: 'PARED FALSA' }
+    ],
     registros: [{ id: 'r03', piso: 0, x: 15, y: 15 }, { id: 'r01', piso: 0, x: 10, y: 9 }, { id: 't03', piso: 1, x: 6, y: 20, carta: true }],
     interruptores: [
+      { piso: 0, x: 11, y: 0, zona: [16, 4, 20, 7] },   // panel lejano de Pirulo (detras de la compuerta de secuencia): apaga las baldosas
       { piso: 0, x: 14, y: 10, zona: [8, 11, 15, 12] }
     ]
   };

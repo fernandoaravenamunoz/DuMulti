@@ -30,6 +30,8 @@
       if (!permitido(mundo, o.tipo)) continue;
       mundo.items.push(nuevo(mundo, o, true));
     }
+    // Premios de los secretos (v1.2): se toman una sola vez
+    if (mundo.modo === 'coop') for (const s of def.secretos || []) if (s.tipo) { const it = nuevo(mundo, s, true); it.unaVez = true; mundo.items.push(it); }
     if (mundo.modo === 'versus') {
       for (const pr of def.premios || []) {
         if (!permitido(mundo, pr.tipo)) continue;
@@ -63,6 +65,24 @@
   }
 
   // Deja un arma en el suelo (al recoger otra pesada)
+  // Objeto que queda en el suelo un rato (lo sueltan enemigos y rivales al morir)
+  function soltar(mundo, tipo, piso, x, y, extra) {
+    const it = Object.assign({ id: mundo.nuevoId(), tipo: tipo, piso: piso, x: x, y: y, activo: true, tRep: 0, fijo: false, vence: mundo.tiempo + DM.Partida.SOLTADOS_DURAN }, extra || {});
+    mundo.items.push(it);
+    return it;
+  }
+  // Al morir un enemigo: elixir pequeño y/o munición del arma pesada de quien lo mató
+  function alMorirEnemigo(mundo, e, a) {
+    if (mundo.cliente) return;
+    const p = DM.Partida.SUELTAN[e.tipo];
+    if (!p) return;
+    const ang = mundo.azar() * Math.PI * 2;
+    if (mundo.azar() < p.vida && permitido(mundo, 'elixirP')) soltar(mundo, 'elixirP', e.piso, e.x, e.y);
+    if (a && a.clase === 'jugador' && a.pesada && mundo.azar() < p.municion) {
+      const arma = DM.ARMAS[a.pesada.id];
+      if (arma && !arma.suprema) soltar(mundo, 'municion:' + a.pesada.id, e.piso, e.x + Math.cos(ang) * 0.3, e.y + Math.sin(ang) * 0.3, { municion: Math.max(1, Math.round(arma.municion * 0.4)) });
+    }
+  }
   function soltarArma(mundo, j) {
     if (!j.pesada) return;
     mundo.items.push({ id: mundo.nuevoId(), tipo: 'arma:' + j.pesada.id, piso: j.piso, x: j.x, y: j.y, activo: true, tRep: 0, fijo: false, municion: j.pesada.municion, tNoTomar: mundo.tiempo + 1, dueno: j.id });
@@ -83,6 +103,13 @@
         j.arma = 4; j.cargaT = 0;
       }
       if (a.suprema) mundo.evento({ t: 'anuncio', texto: j.nombre + ' TIENE EL DESINTEGRADOR', color: 'magenta' });
+      return true;
+    }
+    if (t.indexOf('municion:') === 0) {
+      // Munición: solo sirve si llevas esa arma pesada
+      const id = t.slice(9), a = DM.ARMAS[id];
+      if (!j.pesada || j.pesada.id !== id || j.pesada.municion >= a.municion * 2) return false;
+      j.pesada.municion = Math.min(a.municion * 2, j.pesada.municion + (it.municion || 1));
       return true;
     }
     if (t.indexOf('lanz:') === 0) {
@@ -113,12 +140,16 @@
     const rep = DM.REAPARICION_OBJETOS[mundo.conf.reaparicionObjetos || 'normal'] || 20;
     for (let i = mundo.items.length - 1; i >= 0; i--) {
       const it = mundo.items[i];
+      if (it.vence) {
+        if (mundo.tiempo > it.vence) { mundo.items.splice(i, 1); continue; }
+        it.parpadea = it.vence - mundo.tiempo < 5;
+      }
       if (!it.activo) {
         it.tRep -= dt;
-        if (it.premio && !it.avisado && it.tRep <= 5) {
+        if (it.premio && !it.avisado && it.tRep <= DM.AVISO_PREMIOS) {
           it.avisado = true;
           const nombre = it.suprema ? 'EL DESINTEGRADOR' : DM.OBJETOS[it.tipo].nombre;
-          mundo.evento({ t: 'anuncio', texto: nombre + ' APARECE EN 5 SEGUNDOS', color: 'amarillo' });
+          mundo.evento({ t: 'anuncio', texto: nombre + ' APARECE EN ' + DM.AVISO_PREMIOS + ' SEGUNDOS', color: 'amarillo' });
         }
         if (it.tRep <= 0) { it.activo = true; it.avisado = false; mundo.evento({ t: 'reaparece', id: it.id, premio: it.premio }); }
         continue;
@@ -142,5 +173,5 @@
     }
   }
 
-  DM.Objetos = { preparar: preparar, paso: paso, aparecerPremio: aparecerPremio, soltarArma: soltarArma };
+  DM.Objetos = { preparar: preparar, paso: paso, aparecerPremio: aparecerPremio, soltarArma: soltarArma, soltar: soltar, alMorirEnemigo: alMorirEnemigo };
 })();

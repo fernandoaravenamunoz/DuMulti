@@ -259,6 +259,10 @@
       case 'herido': B('square', 300, 60, 0.22, 0.25); N(0.12, 0.25, 'lowpass', 900); break;
       case 'muerte': B('sawtooth', 440, 40, 1.2, 0.3); break;
       case 'mordisco': N(0.1, 0.3, 'bandpass', 400); B('square', 200, 80, 0.1, 0.15); break;
+      case 'ping': B('sine', 1320, 1320, 0.06, 0.12); B('sine', 1760, 1760, 0.08, 0.1); break;
+      case 'amago': B('sawtooth', 110, 70, 0.28, 0.12); N(0.22, 0.12, 'lowpass', 300); break;
+      case 'acierto': B('square', 1800, 1500, 0.035, 0.08); break;
+      case 'aciertoBaja': B('square', 1400, 900, 0.09, 0.12); B('square', 2100, 1800, 0.05, 0.06); break;
       case 'mina': O('square', 1800, 0, 0.05, 0.12); break;
       case 'rebote': O('triangle', 700 + Math.random() * 300, 0, 0.05, 0.12); break;
       case 'siseo': N(0.8, 0.15, 'highpass', 4000); break;

@@ -70,6 +70,30 @@
         ctx.fillStyle = o.estado === 'caido' ? (Math.floor(t * 4) % 2 ? PAL.rojo : '#6b1010') : mundo.modo === 'coop' ? PAL.verde : DM.EQUIPOS[o.equipo].color;
         ctx.fillRect(ox + o.x * tam - 2, oy + o.y * tam - 2, 4, 4);
       }
+      // Zonas visitadas: su nombre
+      for (const z of (p.zonas || [])) {
+        if (!visitadas[z.k]) continue;
+        TXT.texto(ctx, z.nombre, Math.round(ox + (z.x0 + z.x1 + 1) / 2 * tam), Math.round(oy + (z.y0 + z.y1 + 1) / 2 * tam) - 3, 'rgba(141,147,173,0.9)', 1, 'centro');
+      }
+      // Rutas de personaje (rejilla de Gargolfo, panel de Pirulo)
+      for (const r of mundo.mapa.rutas) {
+        if (r.piso !== k) continue;
+        const i = p.indice(r.x, r.y);
+        if (!visto || !visto[i]) continue;
+        ctx.fillStyle = r.tipo === 'gargolfo' ? '#ff8a2b' : PAL.cianClaro;
+        ctx.fillRect(ox + r.x * tam + 1, oy + r.y * tam + 1, tam - 2, tam - 2);
+      }
+      // Pings
+      for (const q of DM.Escena.listaPings(mundo, jug)) {
+        if (q.piso !== k || !(Math.floor(t * 4) % 2)) continue;
+        ctx.fillStyle = q.color || PAL.verde; ctx.fillRect(ox + q.x * tam - 3, oy + q.y * tam - 3, 6, 6);
+      }
+      // Rivales que dispararon hace poco (versus, "disparar te delata")
+      for (const id in delatores) {
+        const d = delatores[id], o = mundo.jugadores[id];
+        if (!o || o === jug || d.piso !== k || mundo.tiempo > d.hasta || !mundo.sonRivales(jug, o)) continue;
+        if (Math.floor(t * 6) % 2) { ctx.fillStyle = PAL.rojo; ctx.fillRect(ox + d.x * tam - 2, oy + d.y * tam - 2, 5, 5); }
+      }
       // Tú: flecha con tu dirección
       if (k === jug.piso) {
         const px = ox + jug.x * tam, py = oy + jug.y * tam, a = jug.ang;
@@ -85,5 +109,11 @@
     TXT.texto(ctx, (DM.Entrada.tactil ? 'MAPA' : 'Q') + ': CERRAR', C.ANCHO - 8, VH - 10, PAL.gris, 1, 'der');
   }
 
-  DM.MapaUI = { dibujar: dibujar, abierto: false };
+  // Quién disparó hace poco (lo llena main.js con los eventos de disparo)
+  const delatores = {};
+  const visitadas = {};    // zonas visitadas en esta partida (k → true)
+  function visitar(k) { visitadas[k] = true; }
+  function delatar(ev, tiempo) { delatores[ev.id] = { piso: ev.piso, x: ev.x, y: ev.y, hasta: tiempo + 2 }; }
+
+  DM.MapaUI = { dibujar: dibujar, abierto: false, delatar: delatar, visitar: visitar, reiniciar: function () { for (const k in delatores) delete delatores[k]; for (const k in visitadas) delete visitadas[k]; } };
 })();

@@ -59,6 +59,7 @@ body {
 /* La barra del HUD ocupa el 13 % inferior: los botones van encima de ella */
 #btn-disparo { right: 3%; bottom: 18%; width: 21vh; height: 21vh; border-radius: 50%; border-color: #ff3b3b; color: #ffd0d0; font-size: 2.8vh; }
 #btn-usar { right: calc(3% + 23vh); bottom: 18%; width: 14vh; height: 14vh; border-radius: 50%; font-size: 2.6vh; }
+#btn-ping { right: calc(3% + 38vh); bottom: 20%; width: 9vh; height: 9vh; border-radius: 50%; font-size: 3.4vh; border-color: #4dff8a; color: #c8ffd8; }
 #btn-arma, #btn-lanzar { width: 14vh; height: 8vh; font-size: 2.2vh; border-color: #e8b923; color: #ffd34a; }
 #btn-arma { right: 3%; bottom: calc(18% + 23vh); }
 #btn-lanzar { right: calc(3% + 16vh); bottom: calc(18% + 23vh); }

@@ -33,9 +33,9 @@
           '#******#P######A#******#',
           'C*C**C*,,,,,,,<<,*C**C*C',
           '#**Z***,,,,,,,<<,**Z***#',
-          'C***Z**####,,####***Z**C',
-          '#*C**C*####,,####*C**C*#',
-          '#******####,,####******#',
+          'C***Z**#F##,,####***Z**C',
+          '#*C**C*#.##,,####*C**C*#',
+          '#******#.##,,####******#',
           '##,,H#####P,,A#####H,,##',
           '##xx####b.......####,,##',
           '##xx###N......~.N###,,##',
@@ -47,7 +47,7 @@
           '##,,####.......b####ll##',
           '##,,##Q###P,,A######,,P#',
           '#......####,,####......#',
-          '#......####,,####..f.Z.#',
+          '#......R..#,,####..f.Z.#',
           '#..rr..####,,####..XX..#',
           '#......,gg,,,,,,,..XX..#',
           '#L...b.,gg,,,k,,,.Z..!!#',
@@ -64,8 +64,8 @@
           '#####N##Q###A##P##N#####',
           '##,,,,S,,,S,,,S,,,S,,,##',
           '##,########,#########,##',
-          '##,########,#########,##',
-          '##,########,#########,##',
+          '##,#####..F,#########,##',
+          '##,########,#####Illl,##',
           '##,#######A,#P#######,##',
           '##..l.~#........D.....##',
           '##..l..N........N#121.##',
@@ -124,6 +124,30 @@
     suprema: { piso: 0, x: 18, y: 17 },
 
     // Registros de la nave: en una pared (pantalla P o terminal Q) o una carta en el piso
+    // v1.2: zonas con nombre (la primera que contiene el punto gana) y su color de luz
+    zonas: [
+      { piso: 0, nombre: 'CRIOGENIA OESTE', x0: 1, y0: 1, x1: 6, y1: 6, luz: '#22e4ff' },
+      { piso: 0, nombre: 'CRIOGENIA ESTE', x0: 17, y0: 1, x1: 22, y1: 6, luz: '#22e4ff' },
+      { piso: 0, nombre: 'PASILLO DE CAPSULAS', x0: 7, y0: 1, x1: 16, y1: 6, luz: '#e6e3ff' },
+      { piso: 0, nombre: 'SALA CENTRAL', x0: 8, y0: 8, x1: 15, y1: 15, luz: '#ffd34a' },
+      { piso: 0, nombre: 'PASILLO OESTE', x0: 1, y0: 7, x1: 7, y1: 16, luz: '#e6e3ff' },
+      { piso: 0, nombre: 'PASILLO ESTE', x0: 16, y0: 7, x1: 22, y1: 16, luz: '#e6e3ff' },
+      { piso: 0, nombre: 'BODEGA SUR', x0: 1, y0: 17, x1: 10, y1: 22, luz: '#4dff8a' },
+      { piso: 0, nombre: 'ESCOTILLA DEL REACTOR', x0: 11, y0: 17, x1: 22, y1: 22, luz: '#ff3b3b' },
+      { piso: 1, nombre: 'PASILLO DE COMPUERTAS', x0: 2, y0: 2, x1: 21, y1: 7, luz: '#22e4ff' },
+      { piso: 1, nombre: 'SALA DE CONTROL', x0: 8, y0: 8, x1: 15, y1: 15, luz: '#ffd34a' },
+      { piso: 1, nombre: 'SALA DE BALDOSAS', x0: 17, y0: 8, x1: 21, y1: 14, luz: '#4dff8a' },
+      { piso: 1, nombre: 'OFICINAS OESTE', x0: 1, y0: 8, x1: 7, y1: 22, luz: '#e6e3ff' },
+      { piso: 1, nombre: 'TALLER SUR', x0: 8, y0: 16, x1: 15, y1: 22, luz: '#ffd34a' },
+      { piso: 1, nombre: 'DORMITORIOS', x0: 16, y0: 15, x1: 22, y1: 22, luz: '#22e4ff' }
+    ],
+    // v1.2: rutas de personaje y secretos (premio de una sola vez al pisar la casilla)
+    rutas: [{ tipo: 'gargolfo', piso: 0, x: 7, y: 18 }, { tipo: 'pirulo', piso: 1, x: 17, y: 6 }],
+    secretos: [
+      { piso: 0, x: 9, y: 18, tipo: 'blindajeTotal', nombre: 'NICHO DE GARGOLFO' },
+      { piso: 1, x: 8, y: 5, tipo: 'elixirTotal', nombre: 'PARED FALSA' },
+      { piso: 0, x: 8, y: 6, tipo: 'lanz:torreta', nombre: 'PARED FALSA' }
+    ],
     registros: [
       { id: 'c01', piso: 0, x: 10, y: 7 }, { id: 'c02', piso: 0, x: 10, y: 16 },
       { id: 't01', piso: 0, x: 3, y: 21, carta: true }, { id: 'r01', piso: 0, x: 6, y: 16 },
@@ -133,6 +157,7 @@
 
     // Interruptores de sala: encienden o apagan las trampas de su zona [x0, y0, x1, y1]
     interruptores: [
+      { piso: 1, x: 17, y: 6, zona: [4, 8, 4, 9] },   // panel lejano de Pirulo
       { piso: 0, x: 4, y: 10, zona: [2, 7, 3, 9] },
       { piso: 1, x: 7, y: 19, zona: [8, 17, 15, 21] }
     ],

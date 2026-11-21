@@ -1,7 +1,7 @@
 # DuMulti — Documento de diseño (v0.1)
 
 > Shooter en primera persona multijugador online, inspirado en Doom, Wolfenstein 3D y Worodorox 3073.
-> Estado: **versión 1.1 programada (fases 1 a 7 + campaña de 5 sectores)**. Última actualización: 21-11-2026.
+> Estado: **versión 1.2 programada (fases 1 a 7, campaña de 5 sectores y mejoras de jugabilidad)**. Última actualización: 21-11-2026.
 
 ---
 
@@ -16,7 +16,7 @@
 | Jugadores | Hasta **8** por partida online |
 | Plataformas | PC (navegador, GitHub Pages) y Android (APK con Capacitor) |
 | Tecnología | JavaScript puro, sin imágenes externas (todo dibujado con código), PeerJS para la red |
-| Versión 1.1 | 4 mapas de campaña + 1 arena versus (también sector 4) |
+| Versión 1.2 | 4 mapas de campaña + 2 arenas versus: chica (2–4 jugadores) y reactor (5–8, también sector 4) |
 
 ---
 
@@ -72,6 +72,7 @@ En el **modo por equipos**, los equipos son **Cian** y **Amarillo**. No se usan 
 - **PC:** WASD + mouse (Pointer Lock), teclas 1–4 para armas, botón aparte para lanzables, E para usar/leer, M para silenciar.
 - **Android:** joystick a la izquierda, deslizar para apuntar, botones de disparo, cambio de arma, lanzable, usar y pausa.
 - Se reutiliza el sistema de entrada de Worodorox (`input.js`).
+- **Control USB o Bluetooth (v1.2):** stick izquierdo mueve, derecho mira, RT dispara, LT lanza, A usa, X recarga, LB/RB cambian arma, Y elige lanzable, cruceta arriba ping, abajo mapa, View marcador, Start pausa. En menús: cruceta o stick, A acepta, B vuelve. Usa la ayuda de puntería del celular. Sensibilidad y zona muerta en OPCIONES; botones y velocidades en `js/datos/mando.js`. Un control por computador (no hay pantalla dividida).
 - **Compilación del APK desde Android Studio, sin usar la terminal.**
 
 ---
@@ -416,6 +417,39 @@ Pasos (metal y charcos), cambio de arma, disparo de cada arma, recarga, recoger 
 - **Jefe del sector 4:** su vida sube 50 % por cada jugador extra; el desintegrador aparece a los 20 s de pelea.
 - **Música de la campaña:** pista de oleadas; la del final suena con el jefe, la última oleada de un sector y las dos últimas fases del hangar.
 
+## 18b. Decisiones v1.2 (jugabilidad y versus)
+
+**Versus**
+- Dos arenas: **Cámara de pruebas** (20×20, 1 piso, 220 casillas libres, núcleo de reactor al centro y tuberías como cobertura) y **Sala del reactor**. ARENA: AUTO (chica con 4 jugadores o menos) / CHICA / GRANDE. PRÁCTICA usa AUTO.
+- Reaparición a **distancia media**: un punto que ningún rival vivo vea y a 8–14 casillas de camino del rival más cercano. Al comenzar, cada uno aparece lo más lejos posible de los ya ubicados.
+- Reactor: 16 rejillas nuevas (rompibles) en las salas de las esquinas, con vista de lado a lado en las filas 5 y 18. El núcleo del centro no se tocó (es la identidad de la arena y el lugar del jefe).
+- Aviso de premios mayores y desintegrador: 10 s antes.
+- **Disparar te delata** (SÍ por defecto): 2 s como punto rojo en el mapa de los rivales; los golpes y los conos de corto alcance (soplete, rociador) no delatan. Usa el evento de disparo que ya viaja por la red.
+
+| Medición (`npm run medir`, 2 caminantes al azar) | Antes | v1.2 |
+|---|---|---|
+| Reaparición en el reactor: distancia media al rival | 38,8 casillas | 13 casillas (nunca a la vista) |
+| Reactor: se ve del piso 1 | 12,8 % | 14,3 % |
+| Reactor: primer contacto (mediana) | 5,6 s | 5–6 s (sin diferencia clara) |
+| Arena chica: primer contacto (mediana / media) | — | 4,0 s / 6,8 s |
+
+**Combate y ritmo**
+- Marca de acierto en la mira (blanca; roja si es baja), destello del sprite golpeado y retroceso del enemigo según el daño (menos en robots y pesados). El indicador de dirección del daño ya existía.
+- El zombi anticipa su golpe 0,3 s (pose de ataque y gruñido); si te alejas a tiempo, falla.
+- Al morir, los enemigos sueltan elixir pequeño (15 % zombis, 30 % drones) y munición del arma pesada de quien los mató (20 %); el guardián siempre. Duran 20 s y parpadean los últimos 5. En versus, un rival que muere suelta además un elixir pequeño.
+- Las trampas hacen el 40 % del daño a los enemigos. Sector 3 con un jugador quieto (suma de 4 partidas): antes eliminaban entre 14 % y 32 % de cada oleada; ahora entre 0 % y 9 %.
+
+**Cooperativo y orientación**
+- **Ping:** F, clic de la rueda o botón "!". Marca enemigo, objeto o lugar por 4 s (a través de las paredes, con distancia y en el mapa). Un ping por jugador, cada 1 s. En versus solo lo ve el propio equipo.
+- **Rutas por personaje:** en cada mapa de campaña, una rejilla que solo Gargolfo rompe (con un premio detrás) y un panel lejano que solo Pirulo alcanza sin pisar láseres (en laboratorios, detrás de una compuerta de secuencia; apaga las baldosas).
+- **Sector 2:** con 2 o más jugadores, las consolas de la sala NO y de la bodega SE avanzan solo si se mantienen a la vez.
+- **Zonas** con nombre y color de luz en todos los mapas; el nombre aparece al entrar y queda en el mapa al visitarla.
+
+**Rejugar y datos**
+- Medallas por sector: SIN REIMPRESIONES, RÁPIDO (tiempos meta provisorios: 4:00, 3:30, 5:00, 3:00 y 4:00) y ARCHIVISTA (leer todos los registros del mapa). Se guardan sin borrar el avance anterior.
+- 3 secretos por mapa de campaña (paredes falsas `F` que se abren con USAR y nichos tras la rejilla de Gargolfo), con un premio de una sola vez. Contador en los resultados.
+- Registro de las últimas 30 partidas (modo, mapa, jugadores, tiempo por fase, caídas con posición y causa). OPCIONES → ESTADÍSTICAS: mapa de calor, causas, tiempo medio por fase, COPIAR (JSON) y BORRAR.
+
 ## 19. Pendientes por decidir
 
 - [ ] Confirmar los nombres de los 8 personajes.
@@ -426,3 +460,7 @@ Pasos (metal y charcos), cambio de arma, disparo de cada arma, recarga, recoger 
 - [ ] Ajuste fino de daño, vida y cantidad de enemigos tras jugar en grupo.
 - [ ] ¿Bots para el versus en solo?
 - [ ] Ajustar la dificultad de cada sector de la campaña tras jugarla (cantidades en `js/datos/campana.js`).
+- [ ] Confirmar los tiempos meta de la medalla RÁPIDO con partidas reales (usar ESTADÍSTICAS → COPIAR).
+- [ ] Ver si el reactor necesita más cambios para pocos jugadores o si basta con la arena chica.
+- [ ] El sector 4 (reactor) no tiene secretos para no romper la simetría del versus.
+- [ ] Probar el control con un mando real y ajustar velocidad del stick y zona muerta (`js/datos/mando.js`).

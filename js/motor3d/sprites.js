@@ -188,6 +188,13 @@
       if (dorado) for (let k = 0; k < 6; k++) e(16 + k * 7, 30 + (k & 1) * 30, 2, 2, '#ffd34a');
     });
   }
+  // Caja de munición (la sueltan los enemigos; solo sirve para el arma pesada que llevas)
+  function cajaMunicion() {
+    return spriteDesde(function (r, e) {
+      r(20, 46, 24, 14, '#3a3a52'); r(20, 46, 24, 2, '#7a828d'); r(38, 46, 6, 14, '#2a2a3c');
+      r(22, 50, 14, 4, '#e8b923'); for (let k = 0; k < 4; k++) e(23 + k * 4, 40, 2, 6, '#ffd34a');
+    });
+  }
   function nucleo() {
     return spriteDesde(function (r, e, o) {
       for (let j = 0; j < 64; j++) for (let i = 0; i < 64; i++) { const d = Math.hypot(i - 32, j - 40); if (d < 20 && d > 15 && (i + j) % 3 === 0) e(i, j, 1, 1, PAL.cianOsc); }
@@ -356,6 +363,7 @@
       elixirTotal: { tex: frasco(22, '#ffd34a', '#ffffff', '#e8b923'), alto: 0.46 },
       blindajeTotal: { tex: chaleco('#e8b923', true), alto: 0.5 },
       carta: { tex: carta(), alto: 0.3 },
+      municion: { tex: cajaMunicion(), alto: 0.28 },
       'lanz:granada': { tex: granada(false), alto: 0.32 }, 'lanz:mina': { tex: mina(false), alto: 0.3 },
       'lanz:bengala': { tex: bengala(false, 0), alto: 0.32 }, 'lanz:emp': { tex: empSprite(), alto: 0.32 },
       'lanz:torreta': { tex: torreta(0), alto: 0.45 }

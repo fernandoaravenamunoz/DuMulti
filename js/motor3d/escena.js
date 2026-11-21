@@ -14,12 +14,40 @@
   const explosiones = [];  // { piso, x, y, z, r, estilo, t }
   const trazas = [];       // { tramos, t, dur, color, ancho }
   const escena = { temblor: 0, destello: null, tDestello: 0 };
+  const golpeados = {};   // id → segundos de destello que le quedan al sprite (al recibir un acierto)
 
   // Marca de trampa (Ñoquimbo las ve a través de las paredes)
   const MARCA = SP.spriteDesde(function (r, e) {
     for (let k = 0; k < 10; k++) { e(32 - k, 22 + k, 1, 1, PAL.magenta); e(32 + k, 22 + k, 1, 1, PAL.magenta); e(32 - k, 42 - k, 1, 1, PAL.magenta); e(32 + k, 42 - k, 1, 1, PAL.magenta); }
     e(31, 28, 2, 7, PAL.magentaClaro); e(31, 37, 2, 2, PAL.magentaClaro);
   });
+
+  // Pings (v1.2): marca de color sobre lo que un compañero señaló
+  const COLORES_PING = [PAL.verde, PAL.cian, PAL.amarilloClaro, '#e6e3ff'];
+  const TEX_PING = COLORES_PING.map(function (c) {
+    return SP.spriteDesde(function (r, e) {
+      for (let k = 0; k < 9; k++) { e(32 - k, 20 + k, 2, 1, c); e(32 + k, 20 + k, 2, 1, c); e(32 - k, 38 - k, 2, 1, c); e(32 + k, 38 - k, 2, 1, c); }
+      e(31, 24, 2, 7, c); e(31, 33, 2, 2, c);
+    });
+  });
+  const pings = {};   // id de quien marcó → { piso, x, y, sigue, hasta, color }
+  let reloj = 0;
+  function pingVisible(mundo, jugLocal, de) {
+    if (!jugLocal) return false;
+    if (de === jugLocal.id || mundo.modo === 'coop') return true;
+    const o = mundo.jugadores[de];
+    return !!o && mundo.conf.modo === 'equipos' && o.equipo === jugLocal.equipo;
+  }
+  function listaPings(mundo, jugLocal) {
+    const l = [];
+    for (const id in pings) {
+      const p = pings[id];
+      if (reloj > p.hasta || !pingVisible(mundo, jugLocal, id)) continue;
+      if (p.sigue !== null) { const e = mundo.enemigos.find(function (e) { return e.id === p.sigue; }); if (e && !e.muerto) { p.x = e.x; p.y = e.y; p.piso = e.piso; } }
+      l.push(p);
+    }
+    return l;
+  }
 
   function particula(piso, x, y, z, tex, n, fuerza, vida, grav) {
     for (let k = 0; k < n; k++) {
@@ -51,6 +79,11 @@
         }
         case 'impacto': particula(ev.piso, ev.x, ev.y, ev.z || 0.4, E.metal, 4, 1.4, 0.4); break;
         case 'chispa': case 'zap': particula(ev.piso, ev.x, ev.y, ev.z || 0.1, ev.t === 'zap' ? E.chispaCian : E.chispa, 6, 2, 0.4); break;
+        case 'acierto': golpeados[ev.a] = 0.09; break;
+        case 'ping': {
+          pings[ev.de] = { de: ev.de, piso: ev.piso, x: ev.x, y: ev.y, sigue: ev.sigue, que: ev.que, hasta: reloj + 4, k: 0 };
+          break;
+        }
         case 'golpeEnemigo': particula(ev.piso, ev.x, ev.y, ev.z, ev.robot ? E.metal : E.hielo, 5, 1.6, 0.5); break;
         case 'muereEnemigo': particula(ev.piso, ev.x, ev.y, (ev.z || 0) + 0.5, ev.tipo === 'dron' || ev.tipo === 'guardian' ? E.metal : E.hielo, 16, 2.4, 0.9); break;
         case 'aplastar': particula(ev.piso, ev.x, ev.y, 0.3, E.metal, 12, 2.5, 0.6); escena.temblor = Math.max(escena.temblor, 0.2); break;
@@ -63,6 +96,8 @@
 
   // ---------- Avance de los efectos ----------
   function paso(dt) {
+    reloj += dt;
+    for (const id in golpeados) { golpeados[id] -= dt; if (golpeados[id] <= 0) delete golpeados[id]; }
     for (let i = particulas.length - 1; i >= 0; i--) {
       const p = particulas[i];
       p.vida -= dt;
@@ -90,7 +125,7 @@
       const cu = DM.Personajes3D.de(j.personaje, marca);
       const tex = j.estado === 'caido' ? cu.caido : DM.Personajes3D.elegir(cu, j.ang, jugLocal.x - j.x, jugLocal.y - j.y, (j.andar || 0) > 0.08, t);
       const dios = j.ef && j.ef.dios > 0;
-      push({ x: j.x, y: j.y, z: 0, piso: j.piso, tex: tex, alto: 0.95, brillo: dios || (j.ef && j.ef.proteccion > 0 && (Math.floor(t * 10) & 1)), siempre: dios && Math.hypot(j.x - jugLocal.x, j.y - jugLocal.y) < 8 });
+      push({ x: j.x, y: j.y, z: 0, piso: j.piso, tex: tex, alto: 0.95, brillo: dios || golpeados[j.id] > 0 || (j.ef && j.ef.proteccion > 0 && (Math.floor(t * 10) & 1)), siempre: dios && Math.hypot(j.x - jugLocal.x, j.y - jugLocal.y) < 8 });
       if (dios) L.agregar(j.piso, j.x, j.y, 2.2, PAL.cian, 1.2);
       if (j.disparando > 0) L.agregar(j.piso, j.x + Math.cos(j.ang) * 1.5, j.y + Math.sin(j.ang) * 1.5, 2.5, DM.ARMAS[j.armaActual ? j.armaActual() : 'soplete'].color || '#ff8a2b', 1);
     }
@@ -101,7 +136,7 @@
       if (e.muerto) { if ((e.tMuerto || 0) > 0.6) continue; tex = def.restos; }
       else if ((e.anim > 0 && e.anim < 0.6) || e.cargaT > 0) tex = def.ataque;
       else tex = def.cuadros[Math.floor(t * def.fps + e.id * 0.37) % def.cuadros.length];
-      push({ x: e.x, y: e.y, z: e.muerto ? 0 : e.z, piso: e.piso, tex: tex, alto: def.alto, brillo: e.ef && e.ef.congelado > 0 });
+      push({ x: e.x, y: e.y, z: e.muerto ? 0 : e.z, piso: e.piso, tex: tex, alto: def.alto, brillo: (e.ef && e.ef.congelado > 0) || golpeados[e.id] > 0 });
       if (e.tipo === 'dron' && !e.muerto) L.agregar(e.piso, e.x, e.y, 1.6, PAL.rojo, e.cargaT > 0 ? 1.2 : 0.4);
     }
     // Barriles
@@ -111,7 +146,9 @@
       if (!it.activo) continue;
       let def = SP.objetos[it.tipo];
       if (!def && it.tipo.indexOf('arma:') === 0) def = SP.armaSuelo[it.tipo.slice(5)];
+      if (!def && it.tipo.indexOf('municion:') === 0) def = SP.objetos.municion;
       if (!def) continue;
+      if (it.parpadea && Math.floor(t * 8) % 2) continue;   // está por desaparecer
       const bob = 0.03 + Math.sin(t * 3 + it.id) * 0.03;
       push({ x: it.x, y: it.y, z: bob, piso: it.piso, tex: def.tex, alto: def.alto });
       if (it.premio) L.agregar(it.piso, it.x, it.y, 2.2, it.tipo === 'nucleo' ? PAL.cian : it.tipo === 'arma:desintegrador' ? PAL.verde : PAL.amarilloClaro, 0.9 + Math.sin(t * 5) * 0.3);
@@ -160,6 +197,12 @@
           else if (v > 0 && st.tipo === 'activar') L.agregar(c.piso, c.x + 0.5, c.y + 0.5, 2, PAL.amarilloClaro, 0.5 + v);
         });
       }
+    }
+    // Pings de compañeros (se ven a través de las paredes)
+    for (const p of listaPings(mundo, jugLocal)) {
+      const o = mundo.jugadores[p.de];
+      p.color = COLORES_PING[(o ? o.puesto || 0 : 0) % COLORES_PING.length];
+      push({ x: p.x, y: p.y, z: p.que === 'enemigo' ? 1.05 : 0.7, piso: p.piso, tex: TEX_PING[COLORES_PING.indexOf(p.color)], alto: 0.35, siempre: true, brillo: true });
     }
     // Partículas y explosiones
     for (const p of particulas) push({ x: p.x, y: p.y, z: p.z, piso: p.piso, tex: p.tex, alto: p.alto, brillo: true });
@@ -226,8 +269,8 @@
   }
 
   DM.Escena = {
-    procesar: procesar, paso: paso, sprites: sprites, dibujarRayos: dibujarRayos, proyectar: proyectar,
+    procesar: procesar, paso: paso, sprites: sprites, dibujarRayos: dibujarRayos, proyectar: proyectar, listaPings: listaPings, pingVisible: pingVisible,
     estado: escena,
-    reiniciar: function () { particulas.length = 0; explosiones.length = 0; trazas.length = 0; escena.temblor = 0; escena.tDestello = 0; }
+    reiniciar: function () { for (const k in pings) delete pings[k]; particulas.length = 0; explosiones.length = 0; trazas.length = 0; escena.temblor = 0; escena.tDestello = 0; }
   };
 })();

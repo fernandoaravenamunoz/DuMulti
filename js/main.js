@@ -43,7 +43,8 @@
   // Mundo de fondo para los menús (solo se dibuja)
   const fondo = new DM.Mundo(DM.mapas.reactor, 'versus', null, { cliente: true });
   const camFondo = { x: 12, y: 5.5, piso: 0, ang: 1.57, pitch: 0, camZ: 0.5 };
-  let motorDe = null;   // mundo para el que está preparado el motor de dibujo
+  let motorDe = null;
+  let zonaActual = null;   // mundo para el que está preparado el motor de dibujo
   function prepararMotor(m) { motorDe = m; DM.luces.preparar(m.mapa); DM.raycaster.preparar(m.mapa); DM.Escena.reiniciar(); }
   prepararMotor(fondo);
 
@@ -58,7 +59,7 @@
 
   const EN_JUEGO = { juego: 1, pausa: 1, controles: 1, archivo: 1 };
   function cambiar(nuevo) {
-    estado = nuevo; tEstado = 0;
+    estado = nuevo; tEstado = 0; S.aviso2 = null;
     E.fijarModo(nuevo === 'juego' ? 'juego' : 'ui');
     document.body.classList.toggle('en-partida', !!EN_JUEGO[nuevo]);
     musicaSegunEstado();
@@ -78,7 +79,8 @@
   // =====================================================
   function empezar(m, idLocal) {
     mundo = m; jug = mundo.jugadores[idLocal];
-    DM.MapaUI.abierto = false;
+    DM.MapaUI.abierto = false; DM.MapaUI.reiniciar(); zonaActual = null;
+    DM.Estadisticas.empezar(m, (m.reglas.estado() || {}).modo || m.modo);
     vista.ang = jug.ang; vista.pitch = 0;
     acum = 0; tFin = -1; aviso = null;
     prepararMotor(mundo);
@@ -99,7 +101,7 @@
     const c = DM.Partida.versusBase();
     for (const k in c.enemigos) c.enemigos[k] = k !== 'guardian';
     c.bajasMeta = 0; c.duracion = 0;
-    const m = new DM.Mundo(DM.mapas.reactor, 'versus', c, { semilla: (Math.random() * 1e9) | 0 });
+    const m = new DM.Mundo(DM.mapas[DM.Partida.arenaVersus(c.arena, 1)], 'versus', c, { semilla: (Math.random() * 1e9) | 0 });
     m.agregarJugador('h', S.personaje, 0); m.iniciar();
     empezar(m, 'h');
   }
@@ -132,6 +134,11 @@
     ir: function (e) { if (e === 'configVersus' && !Red.sala && !S.configSolo) S.configSolo = Red.cargarConfigVersus(); cambiar(e); },
     guardarPrefs: guardarPrefs,
     soloCoop: soloCoop, soloPractica: soloPractica, soloCampana: soloCampana,
+    // Copia texto al portapapeles (sin ventanas emergentes)
+    copiar: function (texto) {
+      try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto); return; } } catch (err) { /* sigue abajo */ }
+      try { const a = document.createElement('textarea'); a.value = texto; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); } catch (err) { /* nada */ }
+    },
     // Después de un sector: seguir con el siguiente o reintentar (solo o como anfitrión)
     siguienteSector: function () {
       const sig = S.resultado && DM.Progreso.siguiente(S.resultado.nivel);
@@ -206,6 +213,7 @@
       if (ev === 'tecla:KeyG' || ev === 'lanzar' || ev === 'boton:lanzar') toques.lanzar = true;
       if (ev === 'tecla:KeyX' || ev === 'boton:lanzsel') toques.cambiaLanzable = true;
       if (ev === 'tecla:KeyQ' || ev === 'boton:mapa') DM.MapaUI.abierto = !DM.MapaUI.abierto;
+      if (ev === 'tecla:KeyF' || ev === 'boton:ping' || ev === 'ping') toques.ping = true;
       if (ev === 'tecla:KeyR') toques.recargar = true;
       if (ev === 'boton:tab') DM.HUD.tablero = !DM.HUD.tablero;
     }
@@ -216,12 +224,12 @@
     const c = {
       avance: entrada.avance, lateral: entrada.lateral, correr: entrada.correr,
       ang: vista.ang, pitch: vista.pitch, disparo: entrada.disparo && estado === 'juego',
-      usar: !!(E.teclas.KeyE || E.mantenidos.usar) && !DM.HUD.lectura,
-      usarToque: toques.usarToque, lanzar: toques.lanzar, arma: toques.arma, recargar: toques.recargar, cambiaLanzable: toques.cambiaLanzable,
-      tactil: E.tactil, tolerancia: E.tactil ? C.ANGULO_APUNTAR_TACTIL : C.ANGULO_APUNTAR
+      usar: !!(E.teclas.KeyE || E.mantenidos.usar || E.mantenidos.usarMando) && !DM.HUD.lectura,
+      usarToque: toques.usarToque, lanzar: toques.lanzar, arma: toques.arma, recargar: toques.recargar, cambiaLanzable: toques.cambiaLanzable, ping: toques.ping,
+      tactil: E.tactil || !!E.mando, tolerancia: (E.tactil || E.mando) ? C.ANGULO_APUNTAR_TACTIL : C.ANGULO_APUNTAR
     };
     if (estado !== 'juego') { c.avance = c.lateral = 0; c.disparo = c.usar = false; }
-    toques.usarToque = toques.lanzar = toques.recargar = toques.cambiaLanzable = false; toques.arma = 0;
+    toques.usarToque = toques.lanzar = toques.recargar = toques.cambiaLanzable = toques.ping = false; toques.arma = 0;
     return c;
   }
 
@@ -277,15 +285,26 @@
     for (const ev of eventos) {
       if (ev.t === 'fin' && tFin < 0) tFin = 2.5;
       if (ev.t === 'oleada' || ev.t === 'fase') musicaSegunEstado();
+      DM.Estadisticas.evento(ev, mundo);
+      if (ev.t === 'ping' && DM.Escena.pingVisible(mundo, jug, ev.de)) DM.Audio.sfx('ping', ev.de === jug.id ? null : ev, 0.8);
+      // Versus: disparar un arma a distancia te delata 2 s en el mapa de tus rivales
+      if (ev.t === 'disparo' && mundo.modo === 'versus' && mundo.conf.delatar !== false) {
+        const a = DM.ARMAS[ev.arma];
+        if (a && a.tipo !== 'melee' && a.tipo !== 'cono') DM.MapaUI.delatar(ev, mundo.tiempo);
+      }
     }
     if (tFin >= 0) { tFin -= dt; if (tFin < 0) terminarPartida(); }
+    // Zonas con nombre (v1.2): al entrar en una, su nombre aparece arriba
+    const zona = mundo.mapa.zonaEn(jug.piso, jug.x, jug.y);
+    if (zona && zona !== zonaActual && jug.estado === 'vivo') { DM.HUD.anunciarPiso(zona.nombre); DM.MapaUI.visitar(zona.k); }
+    zonaActual = zona;
     DM.Escena.paso(dt);
     DM.luces.actualizar(mundo.tiempo);
-    aviso = mundo.cliente ? alFrenteCliente() : mundo.alFrente(jug, E.tactil ? C.ANGULO_APUNTAR_TACTIL : C.ANGULO_APUNTAR);
+    aviso = mundo.cliente ? alFrenteCliente() : mundo.alFrente(jug, (E.tactil || E.mando) ? C.ANGULO_APUNTAR_TACTIL : C.ANGULO_APUNTAR);
     ambiente(dt);
   }
   // En el cliente, el aviso [E] se calcula con su copia del mapa
-  function alFrenteCliente() { try { return mundo.alFrente(jug, E.tactil ? C.ANGULO_APUNTAR_TACTIL : C.ANGULO_APUNTAR); } catch (err) { return null; } }
+  function alFrenteCliente() { try { return mundo.alFrente(jug, (E.tactil || E.mando) ? C.ANGULO_APUNTAR_TACTIL : C.ANGULO_APUNTAR); } catch (err) { return null; } }
 
   function terminarPartida() {
     const st = mundo.estadoRed || mundo.reglas.estado();
@@ -293,9 +312,23 @@
     lista.sort(function (a, b) { return mundo.modo === 'versus' ? (b.puntos - a.puntos) : (b.bajas - a.bajas); });
     const g = st.ganador;
     if (st.modo === 'campana' && st.fin === 'victoria') DM.Progreso.marcar(st.nivel);
+    // v1.2: medallas del sector (se guardan aunque ya se hubiera superado antes)
+    let medallas = null, nuevas = [];
+    if (st.modo === 'campana') {
+      const n = DM.CAMPANA_POR_ID[st.nivel], leidos = A.leidos();
+      const regs = (mundo.mapa.def.registros || []).map(function (r) { return r.id; });
+      medallas = {
+        sinReimpresiones: st.fin === 'victoria' && !st.reimpresionesUsadas,
+        rapido: st.fin === 'victoria' && n && st.tiempo <= n.tiempoMeta,
+        archivista: regs.length > 0 && regs.every(function (id) { return leidos[id]; })
+      };
+      nuevas = DM.Progreso.ganarMedallas(st.nivel, medallas);
+    }
+    DM.Estadisticas.terminar(mundo, st);
     S.resultado = {
       modo: st.modo, resultado: st.fin, oleada: st.oleada, total: st.total, equipos: st.equipos, ganador: g, puntosEquipo: st.puntosEquipo,
-      nivel: st.nivel, fase: st.fase, fases: st.fases,
+      nivel: st.nivel, fase: st.fase, fases: st.fases, medallas: medallas, medallasNuevas: nuevas,
+      secretos: st.secretos || null, tiempo: st.tiempo || 0,
       nombreGanador: !st.equipos && g && mundo.jugadores[g] ? mundo.jugadores[g].nombre : null,
       tabla: lista.map(function (j) { return { nombre: j.nombre, personaje: j.personaje, bajas: j.bajas, muertes: j.muertes, puntos: j.puntos, equipo: mundo.modo === 'versus' && mundo.conf.modo === 'equipos' ? j.equipo : null, yo: j === jug }; })
     };
@@ -319,6 +352,8 @@
         case 'herido': if (yo) Au.sfx('herido'); break;
         case 'muerte': Au.sfx('muerte', yo ? null : pos); break;
         case 'mordisco': Au.sfx('mordisco', e); break;
+        case 'amago': Au.sfx('amago', e, 0.8); break;
+        case 'acierto': if (e.de === jug.id) Au.sfx(e.baja ? 'aciertoBaja' : 'acierto', null, 0.6); break;
         case 'recoger': if (yo) Au.sfx(e.premio ? 'premio' : 'recoger'); break;
         case 'recarga': if (yo) Au.sfx('recarga'); break;
         case 'recargado': if (yo) Au.sfx('recargado'); break;
@@ -402,7 +437,7 @@
         if (DM.MapaUI.abierto && estado === 'juego') DM.MapaUI.dibujar(ctx, mundo, jug, mundo.tiempo);
       }
       DM.HUD.barra(ctx, jug, mundo, mundo.tiempo);
-      if (estado === 'juego' && !t && !E.bloqueado && !E.modoArrastre) DM.Texto.textoConCaja(ctx, 'CLIC PARA CAPTURAR EL MOUSE', C.ANCHO / 2, 150, PAL.amarilloClaro, PAL.amarillo);
+      if (estado === 'juego' && !t && !E.bloqueado && !E.modoArrastre && !E.mando) DM.Texto.textoConCaja(ctx, 'CLIC PARA CAPTURAR EL MOUSE', C.ANCHO / 2, 150, PAL.amarilloClaro, PAL.amarillo);
       if (estado !== 'juego') DM.Pantallas[estado](ctx, tiempo, S, A);
     } else {
       if (motorDe !== fondo) prepararMotor(fondo);
