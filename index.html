@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#07060d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>DuMulti</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body class="modo-ui">
+  <!-- Contenedor que se escala para llenar la ventana manteniendo 16:9 -->
+  <div id="contenedor">
+    <canvas id="pantalla" width="480" height="270"></canvas>
+
+    <!-- Controles táctiles (solo visibles con pantalla táctil y durante la partida) -->
+    <div id="capa-tactil">
+      <div id="joy-base"><div id="joy-perilla"></div></div>
+      <button class="boton-tactil" id="btn-disparo" data-boton="disparo" data-mantener="1">DISPARO</button>
+      <button class="boton-tactil" id="btn-usar" data-boton="usar" data-mantener="1">USAR</button>
+      <button class="boton-tactil" id="btn-arma" data-boton="arma">ARMA</button>
+      <button class="boton-tactil" id="btn-lanzar" data-boton="lanzar">LANZAR</button>
+      <button class="boton-tactil" id="btn-lanzsel" data-boton="lanzsel">&#8635;</button>
+      <button class="boton-tactil" id="btn-tab" data-boton="tab">TAB</button>
+      <button class="boton-tactil" id="btn-pausa" data-boton="pausa">II</button>
+    </div>
+    <!-- Silencio: siempre visible (tecla M en PC) -->
+    <button id="btn-silencio" data-boton="silencio" title="Silencio (M)">&#9835;</button>
+  </div>
+
+  <div id="girar">Gira tu teléfono para jugar</div>
+
+  <!-- Scripts clásicos (sin módulos) para que funcione abriendo index.html directamente -->
+  <script src="js/config.js"></script>
+  <script src="js/fuente.js"></script>
+  <!-- Datos (editables sin tocar el motor) -->
+  <script src="js/datos/personajes.js"></script>
+  <script src="js/datos/armas.js"></script>
+  <script src="js/datos/enemigos.js"></script>
+  <script src="js/datos/registros.js"></script>
+  <script src="js/datos/partida.js"></script>
+  <script src="js/mapas/sector4.js"></script>
+  <script src="js/mapas/reactor.js"></script>
+
+  <!-- Simulación pura (sin DOM): la misma corre en el anfitrión de la red -->
+  <script src="js/sim/mapa.js"></script>
+  <script src="js/sim/jugador.js"></script>
+  <script src="js/sim/combate.js"></script>
+  <script src="js/sim/enemigos.js"></script>
+  <script src="js/sim/trampas.js"></script>
+  <script src="js/sim/objetos.js"></script>
+  <script src="js/sim/reglas.js"></script>
+  <script src="js/sim/mundo.js"></script>
+
+  <!-- Motor de dibujo -->
+  <script src="js/motor3d/texturas.js"></script>
+  <script src="js/motor3d/sprites.js"></script>
+  <script src="js/motor3d/personajes3d.js"></script>
+  <script src="js/motor3d/luces.js"></script>
+  <script src="js/motor3d/raycaster.js"></script>
+  <script src="js/motor3d/escena.js"></script>
+
+  <!-- Entrada, interfaz y audio -->
+  <script src="js/input.js"></script>
+  <script src="js/ui/texto.js"></script>
+  <script src="js/ui/ui.js"></script>
+  <script src="js/ui/retrato.js"></script>
+  <script src="js/ui/arma_fp.js"></script>
+  <script src="js/ui/hud.js"></script>
+  <script src="js/ui/pantallas.js"></script>
+  <script src="js/audio/synth.js"></script>
+
+  <!-- Multijugador: PeerJS va incluido en el proyecto (licencia MIT) -->
+  <script src="js/red/peerjs.min.js"></script>
+  <script src="js/red/config_red.js"></script>
+  <script src="js/red/transporte.js"></script>
+  <script src="js/red/instantanea.js"></script>
+  <script src="js/red/red.js"></script>
+
+  <script src="js/main.js"></script>
+  <script>
+    // Botón de silencio con mouse (en táctil lo maneja input.js)
+    document.getElementById('btn-silencio').addEventListener('click', function () { DM.Audio.iniciar(); DM.Audio.alternar(); });
+  </script>
+</body>
+</html>
