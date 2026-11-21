@@ -10,6 +10,7 @@
 
   function dibujar(ctx, mundo, jug, t) {
     const VH = C.VISTA_ALTO, pisos = mundo.mapa.pisos;
+    const st = mundo.estadoRed || mundo.reglas.estado();
     ctx.fillStyle = 'rgba(7,6,13,0.93)';
     ctx.fillRect(0, 0, C.ANCHO, VH);
     const n = pisos.length;
@@ -37,6 +38,22 @@
         ctx.fillStyle = col;
         ctx.fillRect(ox + x * tam, oy + y * tam, tam - (w ? 0 : 1), tam - (w ? 0 : 1));
       }
+      // Campaña: objetivos (se ven aunque no los hayas visto todavía)
+      if (st && st.modo === 'campana') {
+        const parpadeo = Math.floor(t * 3) % 2;
+        mundo.mapa.consolas.forEach(function (c, kc) {
+          if (c.piso !== k) return;
+          const lista = st.consolas && st.consolas[kc] >= 1;
+          if (!lista && st.tipo === 'activar' && !parpadeo) return;
+          ctx.fillStyle = lista ? PAL.verde : PAL.amarilloClaro;
+          ctx.fillRect(ox + c.x * tam - 1, oy + c.y * tam - 1, tam + 2, tam + 2);
+        });
+        for (const sa of mundo.mapa.salidas) {
+          if (sa.piso !== k) continue;
+          ctx.fillStyle = st.salida ? (parpadeo ? PAL.verde : '#1f7a45') : '#163a26';
+          ctx.fillRect(ox + sa.x * tam, oy + sa.y * tam, tam - 1, tam - 1);
+        }
+      }
       // Premios mayores visibles
       for (const it of mundo.items) {
         if (!it.activo || !it.premio || it.piso !== k) continue;
@@ -62,6 +79,7 @@
       }
     });
     const ley = [[PAL.amarillo, 'ESCALERA'], [PAL.amarilloClaro, 'ASCENSOR'], [PAL.verde, 'ESTACION'], [PAL.magenta, 'COMPUERTA'], [PAL.magentaOsc, 'TRAMPA']];
+    if (st && st.modo === 'campana') { if (mundo.mapa.consolas.length) ley.push([PAL.amarilloClaro, 'CONSOLA']); if (mundo.mapa.salidas.length) ley.push(['#1f7a45', 'SALIDA']); }
     let lx = 20;
     for (const l of ley) { ctx.fillStyle = l[0]; ctx.fillRect(lx, VH - 10, 5, 5); TXT.texto(ctx, l[1], lx + 8, VH - 10, PAL.gris); lx += DM.fuente.ancho(l[1]) + 22; }
     TXT.texto(ctx, (DM.Entrada.tactil ? 'MAPA' : 'Q') + ': CERRAR', C.ANCHO - 8, VH - 10, PAL.gris, 1, 'der');

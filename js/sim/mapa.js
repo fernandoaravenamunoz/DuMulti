@@ -54,6 +54,8 @@
     this.apariciones = [];  // puntos de aparición de jugadores { piso, x, y }
     this.aparicionesZ = []; // puntos de aparición de enemigos
     this.inicio = null;
+    this.consolas = [];     // consolas de objetivo de la campaña (paredes O) { k, piso, x, y }
+    this.salidas = [];      // casillas de la zona de salida (!) { piso, x, y }
     this.errores = [];
 
     const self = this;
@@ -67,8 +69,13 @@
           const ch = fila[x] || '#';
           const i = y * p.ancho + x;
           const pos = { piso: n, x: x + 0.5, y: y + 0.5 };
-          if (DM.CAR_PARED[ch] !== undefined) p.paredes[i] = DM.CAR_PARED[ch];
-          else if (DM.CAR_SUELO[ch] !== undefined) p.suelo[i] = DM.CAR_SUELO[ch];
+          if (DM.CAR_PARED[ch] !== undefined) {
+            p.paredes[i] = DM.CAR_PARED[ch];
+            if (ch === 'O') self.consolas.push({ k: self.consolas.length, piso: n, x: x, y: y });
+          } else if (DM.CAR_SUELO[ch] !== undefined) {
+            p.suelo[i] = DM.CAR_SUELO[ch];
+            if (ch === '!') self.salidas.push({ piso: n, x: x, y: y });
+          }
           else if (DM.CAR_TRAMPAS.indexOf(ch) >= 0) {
             p.trampa[i] = self.trampas.length;
             self.trampas.push({ car: ch, piso: n, x: x, y: y });
@@ -155,6 +162,15 @@
     return false;
   };
   Mapa.prototype.mapaApertura = Mapa.prototype.apertura;
+
+  // ¿Está el punto en la zona de salida?
+  Mapa.prototype.enSalida = function (piso, x, y) {
+    const p = this.pisos[piso];
+    const cx = Math.floor(x), cy = Math.floor(y);
+    if (!p.dentro(cx, cy)) return false;
+    const i = cy * p.ancho + cx;
+    return !p.paredes[i] && p.suelo[i] === DM.SUELO.SALIDA;
+  };
 
   // Línea de visión dentro de un piso (muestreo cada 0,2 casillas)
   Mapa.prototype.lineaVision = function (piso, x0, y0, x1, y1) {

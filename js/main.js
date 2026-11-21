@@ -43,7 +43,8 @@
   // Mundo de fondo para los menús (solo se dibuja)
   const fondo = new DM.Mundo(DM.mapas.reactor, 'versus', null, { cliente: true });
   const camFondo = { x: 12, y: 5.5, piso: 0, ang: 1.57, pitch: 0, camZ: 0.5 };
-  function prepararMotor(m) { DM.luces.preparar(m.mapa); DM.raycaster.preparar(m.mapa); DM.Escena.reiniciar(); }
+  let motorDe = null;   // mundo para el que está preparado el motor de dibujo
+  function prepararMotor(m) { motorDe = m; DM.luces.preparar(m.mapa); DM.raycaster.preparar(m.mapa); DM.Escena.reiniciar(); }
   prepararMotor(fondo);
 
   function tactil() { return E.tactil || matchMedia('(pointer: coarse)').matches; }
@@ -66,7 +67,9 @@
     if (!DM.Audio) return;
     if (EN_JUEGO[estado] && mundo) {
       const st = mundo.estadoRed || mundo.reglas.estado();
-      DM.Audio.musica(mundo.modo === 'versus' ? 'versus' : st.oleada === st.total ? 'final' : 'coop');
+      let pista = mundo.modo === 'versus' ? 'versus' : st.oleada === st.total ? 'final' : 'coop';
+      if (st.modo === 'campana') pista = st.tipo === 'jefe' || (st.n === DM.CAMPANA.length && st.fase >= 2) || (st.tipo === 'oleadas' && st.oleada === st.total) ? 'final' : 'coop';
+      DM.Audio.musica(pista);
     } else if (estado !== 'resultados') DM.Audio.musica('menu');
   }
 
@@ -86,13 +89,13 @@
     E.pedirBloqueo();
   }
   function soloCoop() {
-    S.enRed = false;
+    S.enRed = false; S.ultima = { tipo: 'coop' };
     const m = new DM.Mundo(DM.mapas.sector4, 'coop', DM.Partida.coopBase(), { semilla: (Math.random() * 1e9) | 0 });
     m.agregarJugador('h', S.personaje, 0); m.iniciar();
     empezar(m, 'h');
   }
   function soloPractica() {
-    S.enRed = false;
+    S.enRed = false; S.ultima = { tipo: 'practica' };
     const c = DM.Partida.versusBase();
     for (const k in c.enemigos) c.enemigos[k] = k !== 'guardian';
     c.bajasMeta = 0; c.duracion = 0;
@@ -100,10 +103,19 @@
     m.agregarJugador('h', S.personaje, 0); m.iniciar();
     empezar(m, 'h');
   }
+  // Campaña en solitario: un sector (s1..s5)
+  function soloCampana(id) {
+    const n = DM.CAMPANA_POR_ID[id];
+    if (!n) return;
+    S.enRed = false; S.ultima = { tipo: 'campana', nivel: id };
+    const m = new DM.Mundo(DM.mapas[n.mapa], 'coop', DM.Partida.coopBase(), { semilla: (Math.random() * 1e9) | 0, nivel: id });
+    m.agregarJugador('h', S.personaje, 0); m.iniciar();
+    empezar(m, 'h');
+  }
   // Partida en red (anfitrión y clientes reciben los mismos datos de inicio)
   function iniciarDesdeDatos(d) {
     S.enRed = true;
-    const m = new DM.Mundo(DM.mapas[d.mapa], d.modo, d.conf, { semilla: d.semilla, cliente: Red.rol === 'cliente' });
+    const m = new DM.Mundo(DM.mapas[d.mapa], d.modo, d.conf, { semilla: d.semilla, cliente: Red.rol === 'cliente', nivel: d.nivel || null });
     for (const j of d.jugadores) { const pj = m.agregarJugador(j.id, j.personaje, j.puesto); pj.equipo = j.equipo; }
     if (Red.rol === 'anfitrion') m.iniciar();
     empezar(m, Red.miId);
@@ -119,7 +131,19 @@
   const A = {
     ir: function (e) { if (e === 'configVersus' && !Red.sala && !S.configSolo) S.configSolo = Red.cargarConfigVersus(); cambiar(e); },
     guardarPrefs: guardarPrefs,
-    soloCoop: soloCoop, soloPractica: soloPractica,
+    soloCoop: soloCoop, soloPractica: soloPractica, soloCampana: soloCampana,
+    // Después de un sector: seguir con el siguiente o reintentar (solo o como anfitrión)
+    siguienteSector: function () {
+      const sig = S.resultado && DM.Progreso.siguiente(S.resultado.nivel);
+      if (!sig) return;
+      if (Red.rol === 'anfitrion') { Red.configurar(function (x) { x.modo = 'campana'; x.nivel = sig; }); A.iniciarRed(); }
+      else soloCampana(sig);
+    },
+    reintentar: function () {
+      if (Red.rol === 'anfitrion') { A.iniciarRed(); return; }
+      const u = S.ultima || { tipo: 'coop' };
+      if (u.tipo === 'campana') soloCampana(u.nivel); else if (u.tipo === 'practica') soloPractica(); else soloCoop();
+    },
     crearSala: function () { Red.crear(S.personaje); cambiar('sala'); },
     unirse: function (cod) { Red.unirse(cod, S.personaje); cambiar('sala'); },
     iniciarRed: function () { const d = Red.iniciarPartida(); if (d) iniciarDesdeDatos(d); },
@@ -252,7 +276,7 @@
     sonidos(eventos);
     for (const ev of eventos) {
       if (ev.t === 'fin' && tFin < 0) tFin = 2.5;
-      if (ev.t === 'oleada') musicaSegunEstado();
+      if (ev.t === 'oleada' || ev.t === 'fase') musicaSegunEstado();
     }
     if (tFin >= 0) { tFin -= dt; if (tFin < 0) terminarPartida(); }
     DM.Escena.paso(dt);
@@ -268,12 +292,14 @@
     const lista = Object.keys(mundo.jugadores).map(function (k) { return mundo.jugadores[k]; });
     lista.sort(function (a, b) { return mundo.modo === 'versus' ? (b.puntos - a.puntos) : (b.bajas - a.bajas); });
     const g = st.ganador;
+    if (st.modo === 'campana' && st.fin === 'victoria') DM.Progreso.marcar(st.nivel);
     S.resultado = {
       modo: st.modo, resultado: st.fin, oleada: st.oleada, total: st.total, equipos: st.equipos, ganador: g, puntosEquipo: st.puntosEquipo,
+      nivel: st.nivel, fase: st.fase, fases: st.fases,
       nombreGanador: !st.equipos && g && mundo.jugadores[g] ? mundo.jugadores[g].nombre : null,
       tabla: lista.map(function (j) { return { nombre: j.nombre, personaje: j.personaje, bajas: j.bajas, muertes: j.muertes, puntos: j.puntos, equipo: mundo.modo === 'versus' && mundo.conf.modo === 'equipos' ? j.equipo : null, yo: j === jug }; })
     };
-    const gane = st.modo === 'coop' ? st.fin === 'victoria' : (st.equipos ? g === jug.equipo : g === jug.id);
+    const gane = st.modo === 'coop' || st.modo === 'campana' ? st.fin === 'victoria' : (st.equipos ? g === jug.equipo : g === jug.id);
     DM.Audio.sfx(gane ? 'victoria' : 'derrota');
     DM.Audio.musica(null);
     cambiar('resultados');
@@ -306,6 +332,8 @@
         case 'zap': Au.sfx('zap', e); break;
         case 'aplastar': Au.sfx('golpeMetal', e); break;
         case 'interruptor': Au.sfx('interruptor'); break;
+        case 'consola': Au.sfx(e.on ? 'premio' : 'interruptor'); break;
+        case 'fase': Au.sfx('oleada'); break;
         case 'anuncio': Au.sfx(e.premio ? 'premio' : 'anuncio'); break;
         case 'oleada': Au.sfx('oleada'); break;
         case 'revivido': Au.sfx('revivir'); break;
@@ -377,6 +405,7 @@
       if (estado === 'juego' && !t && !E.bloqueado && !E.modoArrastre) DM.Texto.textoConCaja(ctx, 'CLIC PARA CAPTURAR EL MOUSE', C.ANCHO / 2, 150, PAL.amarilloClaro, PAL.amarillo);
       if (estado !== 'juego') DM.Pantallas[estado](ctx, tiempo, S, A);
     } else {
+      if (motorDe !== fondo) prepararMotor(fondo);
       DM.texturas.actualizar(fondo.tiempo, DM.luces.fases);
       DM.raycaster.actualizarDinamico(fondo);
       DM.raycaster.render(camFondo, fondo, DM.Escena.sprites(fondo, { x: camFondo.x, y: camFondo.y, piso: 0, personaje: '' }, fondo.tiempo));

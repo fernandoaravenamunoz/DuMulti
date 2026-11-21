@@ -33,3 +33,7 @@ Luego, en Android Studio: **Build → Build APK(s)** otra vez.
 - La app se abre siempre en **horizontal** (`android:screenOrientation="sensorLandscape"` en el `AndroidManifest.xml`).
 - Ícono: clic derecho en `app/res` → **New → Image Asset** para reemplazar el ícono por defecto.
 - Para publicar en Google Play hace falta un APK/AAB **firmado**: Build → Generate Signed App Bundle / APK (Android Studio te guía para crear la llave; guárdala bien).
+
+## Música en el APK
+
+El APK usa la copia que está en `android/app/src/main/assets/public/`. Después de poner los MP3 en `dumulti/assets/musica/`, cópialos también a `android/app/src/main/assets/public/assets/musica/` (o usa `ACTUALIZAR-ANDROID.cmd`) y vuelve a compilar. En Android los nombres distinguen mayúsculas: `monume.mp3` no es lo mismo que `Monume.MP3`.

@@ -61,7 +61,9 @@
     });
     DM.Trampas.preparar(this);
     if (!this.cliente) DM.Objetos.preparar(this);
-    this.reglas = this.modo === 'coop' ? new DM.Reglas.Coop(this) : new DM.Reglas.Versus(this);
+    this.nivel = opciones.nivel || null;     // campaña: id del sector (js/datos/campana.js)
+    this.reglas = this.modo === 'versus' ? new DM.Reglas.Versus(this)
+      : this.nivel ? new DM.Reglas.Campana(this, this.nivel) : new DM.Reglas.Coop(this);
     this._objetivos = [];
     this._tickObjetivos = -1;
     this.tick = 0;
@@ -320,6 +322,13 @@
         if (s) return { accion: 'interruptor', k: s.k, texto: this.modo === 'coop' ? 'MANTEN PARA APAGAR LAS TRAMPAS' : 'ACTIVAR LAS TRAMPAS' };
       }
       if (g.dist > C.DIST_USAR) continue;
+      if (g.tipo === DM.PARED.CONSOLA) {
+        const c = mapa.consolas.find(function (c) { return c.piso === j.piso && c.x === g.mx && c.y === g.my; });
+        if (c) {
+          const info = this.reglas.textoConsola ? this.reglas.textoConsola(c.k) : { texto: 'CONSOLA SIN ENERGIA', progreso: 0 };
+          return { accion: 'consola', k: c.k, texto: info.texto, progreso: info.progreso };
+        }
+      }
       if (DM.PAREDES[g.tipo].puerta && g.tipo !== DM.PARED.SECUENCIA) {
         const k = p.puerta[p.indice(g.mx, g.my)];
         return { accion: 'puerta', puerta: k, texto: 'ABRIR COMPUERTA' };
@@ -366,6 +375,7 @@
           else if (f.accion === 'interruptor' && this.modo === 'versus') DM.Trampas.usarInterruptor(this, f.k, j, false);
         }
         if (f && cmd.usar && f.accion === 'interruptor' && this.modo === 'coop') DM.Trampas.usarInterruptor(this, f.k, j, true);
+        if (f && cmd.usar && f.accion === 'consola' && this.reglas.usarConsola) this.reglas.usarConsola(f.k, j, dt);
         DM.Combate.accionesJugador(this, j, cmd, dt);
       }
 

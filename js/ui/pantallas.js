@@ -45,12 +45,42 @@
     velo(ctx, 0.85);
     UI.titulo(ctx, 'JUGAR SOLO', 20);
     UI.inicio('solo');
-    UI.boton(ctx, 110, 60, 260, 22, 'OLEADAS: SECTOR 1 - BLOQUE CRIOGENICO', { accion: A.soloCoop });
-    TXT.texto(ctx, 'TU CONTRA 8 OLEADAS. AL FINAL, EL ROBOT GUARDIAN', W / 2, 86, PAL.gris, 1, 'centro');
-    UI.boton(ctx, 110, 104, 260, 22, 'PRACTICA: SALA DEL REACTOR', { accion: A.soloPractica });
-    TXT.texto(ctx, 'LA ARENA DEL VERSUS CON ZOMBIS Y DRONES', W / 2, 130, PAL.gris, 1, 'centro');
-    UI.boton(ctx, 110, 150, 260, 16, 'PERSONAJE: ' + DM.PERSONAJES[S.personaje].nombre, { accion: function () { S.volverDeSeleccion = 'solo'; A.ir('seleccion'); } });
-    UI.boton(ctx, 190, 200, 100, 16, 'VOLVER', { accion: function () { A.ir('titulo'); } });
+    UI.boton(ctx, 110, 44, 260, 22, 'CAMPANA: ' + DM.Progreso.cuantos() + ' DE ' + DM.CAMPANA.length + ' SECTORES', { color: PAL.verde, accion: function () { S.nivelSel = DM.Progreso.pendiente(); A.ir('campana'); } });
+    TXT.texto(ctx, 'LA HISTORIA: DE LA CRIOGENIA AL HANGAR. SE GUARDA TU AVANCE', W / 2, 70, PAL.gris, 1, 'centro');
+    UI.boton(ctx, 110, 86, 260, 20, 'SUPERVIVENCIA: 8 OLEADAS', { accion: A.soloCoop });
+    TXT.texto(ctx, 'EN EL SECTOR 1. AL FINAL, EL ROBOT GUARDIAN', W / 2, 110, PAL.gris, 1, 'centro');
+    UI.boton(ctx, 110, 126, 260, 20, 'PRACTICA: SALA DEL REACTOR', { accion: A.soloPractica });
+    TXT.texto(ctx, 'LA ARENA DEL VERSUS CON ZOMBIS Y DRONES', W / 2, 150, PAL.gris, 1, 'centro');
+    UI.boton(ctx, 110, 168, 260, 16, 'PERSONAJE: ' + DM.PERSONAJES[S.personaje].nombre, { accion: function () { S.volverDeSeleccion = 'solo'; A.ir('seleccion'); } });
+    UI.boton(ctx, 190, 206, 100, 16, 'VOLVER', { accion: function () { A.ir('titulo'); } });
+  }
+
+  // ---------- Campaña: elegir sector ----------
+  const FASES_NOMBRE = { oleadas: 'OLEADAS', activar: 'CONSOLAS', jefe: 'JEFE', resistir: 'RESISTIR', salida: 'SALIDA' };
+  function campana(ctx, t, S, A) {
+    velo(ctx, 0.9);
+    UI.titulo(ctx, 'CAMPANA', 8, PAL.verde);
+    UI.inicio('campana');
+    if (!S.nivelSel || !DM.Progreso.disponible(S.nivelSel)) S.nivelSel = DM.Progreso.pendiente();
+    DM.CAMPANA.forEach(function (n, k) {
+      const y = 30 + k * 26;
+      const hecho = DM.Progreso.completado(n.id), disp = DM.Progreso.disponible(n.id);
+      UI.boton(ctx, 20, y, 200, 22, '', { activo: S.nivelSel === n.id, apagado: !disp, accion: function () { S.nivelSel = n.id; } });
+      TXT.texto(ctx, n.nombre.replace(/^SECTOR \d - /, ''), 28, y + 4, disp ? PAL.blanco : PAL.grisOsc);
+      TXT.texto(ctx, 'SECTOR ' + n.n, 28, y + 13, PAL.gris);
+      TXT.texto(ctx, hecho ? 'SUPERADO' : disp ? 'DISPONIBLE' : 'BLOQUEADO', 214, y + 13, hecho ? PAL.verde : disp ? PAL.amarilloClaro : PAL.grisOsc, 1, 'der');
+    });
+    const n = DM.CAMPANA_POR_ID[S.nivelSel];
+    UI.panel(ctx, 232, 30, 230, 126, PAL.cianOsc);
+    TXT.texto(ctx, n.nombre, 240, 36, PAL.cianClaro);
+    TXT.parrafo(ctx, n.intro, 240, 50, 214, PAL.blanco, 'izq', 9);
+    TXT.texto(ctx, 'OBJETIVOS', 240, 90, PAL.gris);
+    n.fases.forEach(function (f, k) { TXT.texto(ctx, (k + 1) + '. ' + FASES_NOMBRE[f.tipo] + ': ' + f.texto, 240, 100 + k * 10, PAL.amarilloClaro); });
+    TXT.texto(ctx, 'MAPA: ' + DM.mapas[n.mapa].nombre, 240, 144, PAL.grisOsc);
+    UI.boton(ctx, 232, 164, 230, 22, 'JUGAR ' + n.nombre.split(' - ')[0], { color: PAL.verde, accion: function () { A.soloCampana(S.nivelSel); } });
+    UI.boton(ctx, 20, 164, 200, 16, 'PERSONAJE: ' + DM.PERSONAJES[S.personaje].nombre, { accion: function () { S.volverDeSeleccion = 'campana'; A.ir('seleccion'); } });
+    UI.boton(ctx, 190, 206, 100, 16, 'VOLVER', { accion: function () { A.ir('solo'); } });
+    TXT.texto(ctx, 'TAMBIEN SE JUEGA EN COOPERATIVO DESDE MULTIJUGADOR', W / 2, 228, PAL.grisOsc, 1, 'centro');
   }
 
   // ---------- Selección de personaje ----------
@@ -142,11 +172,24 @@
     });
     // Modo y resumen
     TXT.texto(ctx, 'MODO', 10, 66, PAL.gris);
-    UI.boton(ctx, 10, 74, 132, 14, s.modo === 'coop' ? 'COOPERATIVO' : 'VERSUS', { apagado: !anf, accion: function () { R.configurar(function (x) { x.modo = x.modo === 'coop' ? 'versus' : 'coop'; }); } });
-    TXT.texto(ctx, s.modo === 'coop' ? 'SECTOR 1 - OLEADAS' : 'SALA DEL REACTOR', 10, 92, PAL.cianOsc);
-    if (s.modo === 'coop') {
-      UI.boton(ctx, 10, 102, 132, 12, 'FUEGO AMIGO: ' + { no: 'NO', si: 'SI', explosivos: 'EXPLOSIVOS' }[s.coop.fuegoAmigo], { apagado: !anf, accion: function () { R.configurar(function (x) { x.coop.fuegoAmigo = { no: 'si', si: 'explosivos', explosivos: 'no' }[x.coop.fuegoAmigo]; }); } });
-      UI.boton(ctx, 10, 116, 132, 12, 'TRAMPAS: ' + siNo(s.coop.trampas), { apagado: !anf, accion: function () { R.configurar(function (x) { x.coop.trampas = !x.coop.trampas; }); } });
+    const NOMBRE_MODO = { campana: 'CAMPANA (COOPERATIVO)', coop: 'SUPERVIVENCIA', versus: 'VERSUS' };
+    UI.boton(ctx, 10, 74, 132, 14, NOMBRE_MODO[s.modo] || 'VERSUS', { apagado: !anf, accion: function () { R.configurar(function (x) { x.modo = { campana: 'coop', coop: 'versus', versus: 'campana' }[x.modo] || 'campana'; if (!x.nivel) x.nivel = DM.Progreso.pendiente(); }); } });
+    if (s.modo === 'campana') {
+      // El sector se elige entre los que el anfitrión ya desbloqueó
+      const disp = DM.Progreso.disponibles();
+      const k = Math.max(0, disp.indexOf(s.nivel));
+      const n = DM.CAMPANA_POR_ID[s.nivel] || DM.CAMPANA[0];
+      if (anf) {
+        UI.boton(ctx, 10, 90, 14, 10, '<', { apagado: k <= 0, accion: function () { R.configurar(function (x) { x.nivel = disp[Math.max(0, k - 1)]; }); } });
+        UI.boton(ctx, 128, 90, 14, 10, '>', { apagado: k >= disp.length - 1, accion: function () { R.configurar(function (x) { x.nivel = disp[Math.min(disp.length - 1, k + 1)]; }); } });
+      }
+      TXT.texto(ctx, 'SECTOR ' + n.n, 76, 92, PAL.cianClaro, 1, 'centro');
+      TXT.texto(ctx, n.nombre.replace(/^SECTOR \d - /, '').slice(0, 33), 76, 104, PAL.cian, 1, 'centro');
+    } else TXT.texto(ctx, s.modo === 'coop' ? 'SECTOR 1 - 8 OLEADAS' : 'SALA DEL REACTOR', 10, 92, PAL.cianOsc);
+    if (s.modo === 'campana' || s.modo === 'coop') {
+      const yb = s.modo === 'campana' ? 114 : 102;
+      UI.boton(ctx, 10, yb, 132, 12, 'FUEGO AMIGO: ' + { no: 'NO', si: 'SI', explosivos: 'EXPLOSIVOS' }[s.coop.fuegoAmigo], { apagado: !anf, accion: function () { R.configurar(function (x) { x.coop.fuegoAmigo = { no: 'si', si: 'explosivos', explosivos: 'no' }[x.coop.fuegoAmigo]; }); } });
+      UI.boton(ctx, 10, yb + 14, 132, 12, 'TRAMPAS: ' + siNo(s.coop.trampas), { apagado: !anf, accion: function () { R.configurar(function (x) { x.coop.trampas = !x.coop.trampas; }); } });
     } else {
       const v = s.versus;
       TXT.texto(ctx, (v.modo === 'equipos' ? 'EQUIPOS' : 'TODOS CONTRA TODOS') + ' - ' + (v.bajasMeta || 'SIN LIMITE') + ' BAJAS', 10, 104, PAL.blanco);
@@ -348,7 +391,14 @@
     velo(ctx, 0.85);
     UI.inicio('resultados');
     const res = S.resultado || {};
-    if (res.modo === 'coop') {
+    if (res.modo === 'campana') {
+      const gano = res.resultado === 'victoria';
+      const n = DM.CAMPANA_POR_ID[res.nivel] || DM.CAMPANA[0];
+      const ultimo = n.n === DM.CAMPANA.length;
+      TXT.textoNeon(ctx, gano ? (ultimo ? 'ESCAPARON' : 'SECTOR SUPERADO') : 'EQUIPO PERDIDO', W / 2, 16, gano ? PAL.verde : PAL.rojo, gano ? PAL.verde : PAL.rojoOsc, 4, 'centro');
+      const sig = DM.Progreso.siguiente(n.id);
+      TXT.texto(ctx, gano ? (ultimo ? n.final : 'SE DESBLOQUEO EL ' + DM.CAMPANA_POR_ID[sig].nombre) : n.nombre + ': CAYERON EN EL OBJETIVO ' + res.fase + ' DE ' + res.fases, W / 2, 46, PAL.blanco, 1, 'centro');
+    } else if (res.modo === 'coop') {
       const gano = res.resultado === 'victoria';
       TXT.textoNeon(ctx, gano ? 'SECTOR LIMPIO' : 'EQUIPO PERDIDO', W / 2, 16, gano ? PAL.verde : PAL.rojo, gano ? PAL.verde : PAL.rojoOsc, 4, 'centro');
       TXT.texto(ctx, gano ? 'LA NAVE SALVAVIDAS PARTE RUMBO A TEMUKEITOR' : 'LLEGARON A LA OLEADA ' + res.oleada + ' DE ' + res.total, W / 2, 46, PAL.blanco, 1, 'centro');
@@ -359,10 +409,10 @@
       TXT.textoNeon(ctx, txt, W / 2, 16, PAL.amarilloClaro, PAL.magenta, 3, 'centro');
       if (res.equipos) TXT.texto(ctx, 'CIAN ' + res.puntosEquipo[0] + '  -  ' + res.puntosEquipo[1] + ' AMARILLO', W / 2, 46, PAL.blanco, 1, 'centro');
     }
-    UI.panel(ctx, 70, 60, 340, 150, PAL.cianOsc);
+    UI.panel(ctx, 70, 60, 340, 132, PAL.cianOsc);
     TXT.texto(ctx, 'JUGADOR', 80, 66, PAL.gris); TXT.texto(ctx, 'BAJAS', 280, 66, PAL.gris); TXT.texto(ctx, 'MUERTES', 320, 66, PAL.gris); TXT.texto(ctx, 'PUNTOS', 370, 66, PAL.gris);
     (res.tabla || []).forEach(function (f, k) {
-      const y = 80 + k * 15;
+      const y = 80 + k * 13;
       const col = f.equipo !== null && f.equipo !== undefined ? DM.EQUIPOS[f.equipo].claro : f.yo ? PAL.amarilloClaro : PAL.blanco;
       ctx.drawImage(DM.Retrato.cuadros(f.personaje)[0], 0, 0, 34, 34, 80, y - 3, 12, 12);
       TXT.texto(ctx, (k + 1) + '. ' + f.nombre, 96, y, col);
@@ -371,9 +421,34 @@
       TXT.texto(ctx, String(f.puntos), 398, y, PAL.amarilloClaro, 1, 'der');
     });
     const enRed = !!DM.Red.rol;
+    // Campaña: seguir con el siguiente sector, reintentar o ver el final
+    const puedeElegir = !enRed || DM.Red.rol === 'anfitrion';
+    if (res.modo === 'campana') {
+      const gano = res.resultado === 'victoria';
+      const sig = DM.Progreso.siguiente(res.nivel);
+      if (gano && !sig) UI.boton(ctx, 30, 198, 130, 16, 'VER EL FINAL', { color: PAL.verde, accion: function () { A.ir('final'); } });
+      else if (gano && puedeElegir) UI.boton(ctx, 30, 198, 130, 16, 'SIGUIENTE SECTOR', { color: PAL.verde, accion: A.siguienteSector });
+      else if (puedeElegir) UI.boton(ctx, 30, 198, 130, 16, 'REINTENTAR', { color: PAL.amarillo, accion: A.reintentar });
+    } else if (!enRed && res.modo !== 'campana') UI.boton(ctx, 30, 198, 130, 16, 'JUGAR DE NUEVO', { color: PAL.amarillo, accion: A.reintentar });
     if (enRed && DM.Red.rol === 'anfitrion') UI.boton(ctx, 120, 220, 120, 16, 'VOLVER A LA SALA', { color: PAL.verde, accion: A.volverASala });
     if (enRed && DM.Red.rol === 'cliente') TXT.texto(ctx, 'ESPERANDO AL ANFITRION...', 180, 225, PAL.grisOsc, 1, 'centro');
     UI.boton(ctx, enRed ? 250 : 190, 220, 110, 16, 'MENU PRINCIPAL', { color: PAL.magenta, accion: A.salirPartida });
+  }
+
+  // ---------- Final de la campaña ----------
+  function final(ctx, t, S, A) {
+    velo(ctx, 0.95);
+    UI.inicio('final');
+    const sube = Math.min(1, t * 0.4);
+    ctx.globalAlpha = sube;
+    TXT.textoNeon(ctx, 'RUMBO A TEMUKEITOR', W / 2, 18, PAL.cianClaro, PAL.cian, 3, 'centro');
+    TXT.parrafo(ctx, 'LA NAVE SALVAVIDAS SE SUELTA DEL HANGAR B Y CAE HACIA LA NOCHE. ATRAS QUEDA LA WORODOROX 3073, CON SUS DORMIDOS DESPIERTOS, SUS DRONES CIEGOS Y EL REACTOR APAGADO.', W / 2, 56, 400, PAL.blanco, 'centro', 10);
+    TXT.parrafo(ctx, 'EN LA RADIO SE ESCUCHA UNA VOZ LEJANA: OTRO GRUPO, UNA NINA LLAMADA CHISPA, LLEGO AL NUCLEO DE LA IA. TAL VEZ TAMBIEN ENCUENTREN LA SALIDA.', W / 2, 100, 400, PAL.cian, 'centro', 10);
+    TXT.parrafo(ctx, 'ADELANTE, LAS LUCES DE TEMUKEITOR: EL ULTIMO REDUCTO DONDE LOS HUMANOS VIVEN EN PAZ.', W / 2, 140, 400, PAL.amarilloClaro, 'centro', 10);
+    TXT.texto(ctx, 'FIN DE LA CAMPANA', W / 2, 172, PAL.verde, 1, 'centro');
+    ctx.globalAlpha = 1;
+    UI.boton(ctx, 120, 200, 110, 16, 'CREDITOS', { accion: function () { S.volverDeCreditos = 'titulo'; A.ir('creditos'); } });
+    UI.boton(ctx, 250, 200, 110, 16, 'MENU PRINCIPAL', { color: PAL.magenta, accion: A.salirPartida });
   }
 
   // ---------- Créditos ----------
@@ -395,7 +470,7 @@
   }
 
   DM.Pantallas = {
-    titulo: titulo, solo: solo, seleccion: seleccion, redMenu: redMenu, codigo: codigo, sala: sala,
+    titulo: titulo, solo: solo, campana: campana, final: final, seleccion: seleccion, redMenu: redMenu, codigo: codigo, sala: sala,
     configVersus: configVersus, opciones: opciones, pausa: pausa, controles: controles, archivo: archivo,
     resultados: resultados, creditos: creditos, registro: registro, velo: velo
   };

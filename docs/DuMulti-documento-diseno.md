@@ -1,7 +1,7 @@
 # DuMulti — Documento de diseño (v0.1)
 
 > Shooter en primera persona multijugador online, inspirado en Doom, Wolfenstein 3D y Worodorox 3073.
-> Estado: **versión 1.0 programada (fases 1 a 7)**. Última actualización: 21-11-2026.
+> Estado: **versión 1.1 programada (fases 1 a 7 + campaña de 5 sectores)**. Última actualización: 21-11-2026.
 
 ---
 
@@ -12,11 +12,11 @@
 | Género | Shooter en primera persona (raycaster tipo Wolfenstein, con elementos de Doom) |
 | Universo | El mismo de Worodorox 3073 (nave cyberpunk) |
 | Estética | 32 bits, dirección visual **"D · Alarma neón"** |
-| Modos | Cooperativo (oleadas) y Versus (todos contra todos o por equipos) |
+| Modos | Campaña de 5 sectores (solo o cooperativo), Supervivencia (oleadas) y Versus (todos contra todos o por equipos) |
 | Jugadores | Hasta **8** por partida online |
 | Plataformas | PC (navegador, GitHub Pages) y Android (APK con Capacitor) |
 | Tecnología | JavaScript puro, sin imágenes externas (todo dibujado con código), PeerJS para la red |
-| Primera versión | 1 mapa cooperativo + 1 arena versus |
+| Versión 1.1 | 4 mapas de campaña + 1 arena versus (también sector 4) |
 
 ---
 
@@ -320,6 +320,23 @@ Todas **avisan antes de activarse**. Funcionan con el reloj de la partida, así 
 - Zonas temáticas posibles: cápsulas criogénicas (origen de los zombis), pasillos de neón y sala del reactor (combate final / arena).
 - Diseño pensado para las trampas y los premios mayores (lugares de riesgo).
 
+### Campaña (v1.1)
+
+Cinco sectores que siguen la historia, de la criogenia al hangar. Se juegan solo o en cooperativo; cada uno se desbloquea al superar el anterior y el avance se guarda en el dispositivo (en red cuenta el avance del anfitrión, y al ganar todos guardan el sector).
+
+| Sector | Mapa | Fases |
+|---|---|---|
+| 1 Bloque criogénico | sector4 | 4 oleadas → salida (escotilla del reactor) |
+| 2 Pasarelas industriales | pasarelas | activar 3 consolas → salida (montacargas del este) |
+| 3 Laboratorios de seguridad | laboratorios | 5 oleadas con drones → salida (esclusa) |
+| 4 Núcleo del reactor | reactor | jefe: robot guardián |
+| 5 Hangar | hangar | encender la nave (consola de la torre) → resistir 60 s → subir a la nave en 45 s |
+
+- **Fases** (en `js/datos/campana.js`): oleadas, activar consolas (O, mantener USAR), jefe, resistir y salida (todos sobre las casillas !).
+- **Goteo:** durante las fases que no son de oleadas siguen llegando enemigos, con un máximo según la cantidad de jugadores.
+- Reglas de caídos, revivir y 3 reimpresiones iguales que en el cooperativo.
+- El sector 5 se pierde si se acaba el tiempo para subir a la nave.
+
 ---
 
 ## 14. Red (multijugador)
@@ -393,6 +410,11 @@ Pasos (metal y charcos), cambio de arma, disparo de cada arma, recarga, recoger 
 - **Solo:** cooperativo completo o PRÁCTICA en la arena del versus con zombis y drones (no hay bots rivales).
 - **Registros:** un registro menciona a Chispa, Tuerca y una señora con una lata, como otro grupo que huye (continuidad con Worodorox; se puede quitar en `js/datos/registros.js`).
 - **Música faltante:** si un MP3 no está en `assets/musica/`, suena una pista synthwave generada.
+- **Campaña (v1.1):** el JUGAR SOLO ofrece CAMPAÑA, SUPERVIVENCIA (las 8 oleadas de siempre) y PRÁCTICA. Los modos de la sala son CAMPAÑA, SUPERVIVENCIA y VERSUS.
+- **Avance de la campaña:** se guarda por dispositivo; en red el anfitrión solo puede elegir sectores que ya desbloqueó.
+- **Guía al objetivo:** flecha y distancia arriba de la pantalla; si el objetivo está en otro piso, se avisa. El mapa marca consolas y salida aunque no se hayan visto.
+- **Jefe del sector 4:** su vida sube 50 % por cada jugador extra; el desintegrador aparece a los 20 s de pelea.
+- **Música de la campaña:** pista de oleadas; la del final suena con el jefe, la última oleada de un sector y las dos últimas fases del hangar.
 
 ## 19. Pendientes por decidir
 
@@ -403,3 +425,4 @@ Pasos (metal y charcos), cambio de arma, disparo de cada arma, recarga, recoger 
 - [ ] Asignación final de pistas musicales y créditos exactos.
 - [ ] Ajuste fino de daño, vida y cantidad de enemigos tras jugar en grupo.
 - [ ] ¿Bots para el versus en solo?
+- [ ] Ajustar la dificultad de cada sector de la campaña tras jugarla (cantidades en `js/datos/campana.js`).

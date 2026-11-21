@@ -113,6 +113,16 @@
       const on = mundo.modo === 'coop' ? !(st.mantenido > mundo.tiempo) : st.activoHasta > mundo.tiempo;
       R.pared[p.indice(s.x, s.y)] = ID.interruptor[on ? 1 : 0];
     });
+    // Campaña: consolas encendidas y zona de salida activa
+    if (!mapa.consolas.length && !mapa.salidas.length) return;
+    const st = mundo.estadoRed || (mundo.reglas && mundo.reglas.estado ? mundo.reglas.estado() : null);
+    const camp = st && st.modo === 'campana';
+    mapa.consolas.forEach(function (c, k) {
+      const on = camp && st.consolas && st.consolas[k] >= 1;
+      render3d[c.piso].pared[mapa.pisos[c.piso].indice(c.x, c.y)] = ID.consola[on ? 1 : 0];
+    });
+    const activa = camp && st.salida;
+    for (const s of mapa.salidas) render3d[s.piso].suelo[mapa.pisos[s.piso].indice(s.x, s.y)] = ID.salida[activa ? 1 : 0];
   }
 
   // ---------- Sombreado: luz de color (escala 64) + niebla (k, nr, ng, nb en escala 256) ----------

@@ -103,7 +103,9 @@ DM.PARED = {
   TERMINAL: 12,      // terminal de seguridad (reportes)
   SECUENCIA: 13,     // compuerta que se abre y cierra en orden, con el reloj
   APLASTADOR: 14,    // la casilla del aplastador cuando se cierra
-  REACTOR: 15        // pared del núcleo del reactor (decorativa, emisiva)
+  REACTOR: 15,       // pared del núcleo del reactor (decorativa, emisiva)
+  CONSOLA: 16,       // consola de objetivo de la campaña (se activa manteniendo USAR)
+  NAVE: 17           // casco de la nave salvavidas (hangar)
 };
 DM.PAREDES = {
   1: { nombre: 'PARED', metal: true }, 2: { nombre: 'PANEL NEON', metal: true }, 3: { nombre: 'TUBERIAS', metal: true },
@@ -113,23 +115,25 @@ DM.PAREDES = {
   9: { nombre: 'ASCENSOR', metal: true }, 10: { nombre: 'PANEL', metal: true },
   11: { nombre: 'INTERRUPTOR', metal: true }, 12: { nombre: 'TERMINAL' },
   13: { nombre: 'COMPUERTA DE SECUENCIA', puerta: true, metal: true },
-  14: { nombre: 'APLASTADOR', metal: true }, 15: { nombre: 'REACTOR' }
+  14: { nombre: 'APLASTADOR', metal: true }, 15: { nombre: 'REACTOR' },
+  16: { nombre: 'CONSOLA' }, 17: { nombre: 'NAVE SALVAVIDAS', metal: true }
 };
 
 // ---------- Tipos de piso ----------
 DM.SUELO = {
   NORMAL: 0, VARIANTE: 1, PLASMA: 2, REJILLA: 3, ESCALERA: 4, ASCENSOR: 5,
   ESTACION: 6,       // estación de respaldo (reaparición en cooperativo)
-  CRIO: 7            // piso del área de cápsulas (de ahí salen los zombis)
+  CRIO: 7,           // piso del área de cápsulas (de ahí salen los zombis)
+  SALIDA: 8          // zona de salida del sector (campaña): se enciende al cumplir el objetivo
 };
 
 // ---------- Caracteres de los mapas ----------
 DM.CAR_PARED = {
   '#': 1, 'N': 2, 'T': 3, 'P': 4, 'A': 5, 'R': 6, 'C': 7, 'D': 8, 'L': 9, 'H': 10,
-  'I': 11, 'Q': 12, 'S': 13, 'X': 15
+  'I': 11, 'Q': 12, 'S': 13, 'X': 15, 'O': 16, 'V': 17
 };
 DM.CAR_SUELO = {
-  '.': 0, ' ': 0, ',': 1, '~': 2, '=': 3, 's': 4, 'e': 5, 'r': 6, '*': 7
+  '.': 0, ' ': 0, ',': 1, '~': 2, '=': 3, 's': 4, 'e': 5, 'r': 6, '*': 7, '!': 8
 };
 // Trampas (la casilla queda vacía; la trampa vive en sim/trampas.js)
 //  x piso electrificado | l láser | k aplastador | g gas | < > ^ v descompresión

@@ -112,6 +112,11 @@
         m.aparecerEnemigo(tipo);
       }
     }
+    this.pasoCaidos(dt);
+  };
+  // Caídos (revivir / estación) y reimpresión del equipo. Compartido con la campaña.
+  Coop.prototype.pasoCaidos = function (dt) {
+    const m = this.mundo;
     // Caídos: revivir o reaparecer en la estación
     const lista = listaJugadores(m);
     for (const j of lista) {
@@ -169,6 +174,181 @@
   Coop.prototype.estado = function () {
     const quedan = this.mundo.enemigos.filter(function (e) { return !e.muerto; }).length + this.cola.length;
     return { modo: 'coop', oleada: this.oleada, total: this.total, quedan: quedan, pausa: this.tPausa, vidas: this.vidas, fin: this.terminado ? this.resultado : null };
+  };
+
+
+  // =====================================================
+  // CAMPAÑA: 5 sectores con fases (ver js/datos/campana.js)
+  // Usa las mismas reglas de caídos, reviviendo y reimpresiones del cooperativo.
+  // =====================================================
+  function Campana(mundo, idNivel) {
+    Coop.call(this, mundo);
+    this.nivel = DM.CAMPANA_POR_ID[idNivel] || DM.CAMPANA[0];
+    this.fases = this.nivel.fases;
+    this.fase = -1;               // −1 = presentación del sector
+    this.tPausa = 5;              // segundos hasta empezar la primera fase
+    this.tFase = 0;               // segundos desde que empezó la fase
+    this.tGoteo = 3;
+    this.premiosDados = {};
+    this.consolas = mundo.mapa.consolas.map(function () { return 0; });   // progreso 0..1
+    this.usandoConsola = {};      // k → último instante en que alguien la mantuvo
+    this.restante = -1;           // resistir / límite de la salida
+    this.jefe = null;
+    this.enSalida = 0;
+  }
+  Campana.prototype = Object.create(Coop.prototype);
+  Campana.prototype.constructor = Campana;
+
+  Campana.prototype.faseActual = function () { return this.fase >= 0 ? this.fases[this.fase] : null; };
+  Campana.prototype.multJugadores = function () { return 1 + 0.35 * (Math.max(1, listaJugadores(this.mundo).length) - 1); };
+
+  Campana.prototype.empezarFase = function (k) {
+    const m = this.mundo, f = this.fases[k];
+    this.fase = k; this.tFase = 0; this.tGoteo = 4; this.premiosDados = {};
+    this.restante = -1; this.oleada = 0; this.cola = []; this.tPausa = null;
+    if (f.tipo === 'oleadas') { this.total = f.oleadas.length; this.tPausa = 3; }
+    if (f.tipo === 'activar') this.usandoConsola = {};
+    if (f.tipo === 'resistir') this.restante = f.segundos;
+    if (f.tipo === 'salida' && f.limite) this.restante = f.limite;
+    if (f.tipo === 'jefe') {
+      const a = f.aparece || m.mapa.aparicionesZ[0] || m.mapa.apariciones[0];
+      const e = new DM.Enemigos.Enemigo(m.nuevoId(), 'guardian', { piso: a.piso, x: a.x, y: a.y });
+      e.vida = e.vidaMax = Math.round(e.vida * (1 + 0.5 * (listaJugadores(m).length - 1)));
+      e.jefe = true;
+      m.enemigos.push(e);
+      this.jefe = e;
+      m.evento({ t: 'aparece', tipo: 'guardian', piso: e.piso, x: e.x, y: e.y });
+    }
+    m.evento({ t: 'fase', n: k + 1, total: this.fases.length, tipo: f.tipo, texto: f.texto });
+    m.evento({ t: 'anuncio', texto: f.texto, color: f.tipo === 'salida' ? 'verde' : 'amarillo' });
+    this.darPremio('inicio');
+  };
+  Campana.prototype.darPremio = function (clave) {
+    const f = this.faseActual();
+    if (!f || !f.premios || this.premiosDados[clave]) return;
+    const tipo = f.premios[clave];
+    if (!tipo) return;
+    this.premiosDados[clave] = true;
+    DM.Objetos.aparecerPremio(this.mundo, tipo);
+  };
+  Campana.prototype.completarFase = function () {
+    const m = this.mundo;
+    if (this.fase + 1 >= this.fases.length) { this.terminar('victoria'); return; }
+    m.evento({ t: 'anuncio', texto: 'OBJETIVO CUMPLIDO', color: 'verde' });
+    this.empezarFase(this.fase + 1);
+  };
+  // Enemigos que siguen llegando durante la fase
+  Campana.prototype.goteo = function (f, dt) {
+    if (!f.goteo) return;
+    const m = this.mundo, g = f.goteo;
+    this.tGoteo -= dt;
+    if (this.tGoteo > 0) return;
+    this.tGoteo = g.cada / Math.sqrt(this.multJugadores());
+    const vivosE = m.enemigos.filter(function (e) { return !e.muerto; }).length;
+    if (vivosE >= Math.round(g.max * this.multJugadores())) return;
+    m.aparecerEnemigo(g.tipos[Math.floor(m.azar() * g.tipos.length)]);
+  };
+  // Un jugador mantiene USAR frente a la consola k (lo llama el mundo en cada paso)
+  Campana.prototype.usarConsola = function (k, j, dt) {
+    const f = this.faseActual();
+    if (!f || f.tipo !== 'activar' || this.consolas[k] >= 1) return;
+    const antes = this.consolas[k];
+    this.consolas[k] = Math.min(1, antes + dt / (f.tiempo || 4));
+    this.usandoConsola[k] = this.mundo.tiempo;
+    if (antes === 0) this.mundo.evento({ t: 'consola', k: k, on: false, id: j.id });
+    if (this.consolas[k] >= 1) {
+      const listas = this.consolas.filter(function (v) { return v >= 1; }).length;
+      this.mundo.evento({ t: 'consola', k: k, on: true, id: j.id });
+      this.mundo.evento({ t: 'anuncio', texto: 'CONSOLA ACTIVADA ' + listas + '/' + this.consolas.length, color: 'verde' });
+    }
+  };
+  // Texto del aviso frente a la consola (en un cliente de red se usa el estado recibido)
+  Campana.prototype.textoConsola = function (k) {
+    const st = this.mundo.estadoRed, f = this.faseActual();
+    const tipo = st ? st.tipo : (f ? f.tipo : 'intro');
+    const v = st ? (st.consolas[k] || 0) : this.consolas[k];
+    if (v >= 1) return { texto: 'CONSOLA ACTIVADA', progreso: 1 };
+    if (tipo !== 'activar') return { texto: 'CONSOLA SIN ENERGIA', progreso: 0 };
+    return { texto: 'MANTEN PARA ACTIVAR LA CONSOLA', progreso: v };
+  };
+  Campana.prototype.salidaActiva = function () { const f = this.faseActual(); return !!f && f.tipo === 'salida'; };
+
+  Campana.prototype.paso = function (dt) {
+    const m = this.mundo;
+    if (this.terminado) return;
+    if (this.fase < 0) {
+      this.tPausa -= dt;
+      if (this.tPausa <= 0) this.empezarFase(0);
+      this.pasoCaidos(dt);
+      return;
+    }
+    const f = this.faseActual();
+    this.tFase += dt;
+    // Premios por tiempo (claves numéricas en fases que no son de oleadas)
+    if (f.premios && f.tipo !== 'oleadas') for (const c in f.premios) if (c !== 'inicio' && this.tFase >= +c) this.darPremio(c);
+
+    if (f.tipo === 'oleadas') {
+      const quedan = m.enemigos.filter(function (e) { return !e.muerto; }).length;
+      if (this.oleada === 0 || (this.cola.length === 0 && quedan === 0)) {
+        if (this.oleada >= this.total) { this.completarFase(); }
+        else {
+          if (this.tPausa === null) { this.tPausa = 6; m.evento({ t: 'anuncio', texto: 'OLEADA ' + this.oleada + ' SUPERADA', color: 'verde' }); }
+          this.tPausa -= dt;
+          if (this.tPausa <= 0) {
+            this.tPausa = null;
+            this.oleada++;
+            const def = f.oleadas[this.oleada - 1], mult = this.multJugadores();
+            for (const tipo in def) { const cant = tipo === 'guardian' ? def[tipo] : Math.round(def[tipo] * mult); for (let k = 0; k < cant; k++) this.cola.push(tipo); }
+            for (let i = this.cola.length - 1; i > 0; i--) { const k = Math.floor(m.azar() * (i + 1)); const t = this.cola[i]; this.cola[i] = this.cola[k]; this.cola[k] = t; }
+            this.tSalida = 0;
+            m.evento({ t: 'oleada', n: this.oleada, total: this.total, ultima: this.oleada === this.total });
+            this.darPremio(String(this.oleada));
+          }
+        }
+      } else if (this.cola.length) {
+        this.tSalida -= dt;
+        if (this.tSalida <= 0 && quedan < 40) { this.tSalida = 0.55; m.aparecerEnemigo(this.cola.shift()); }
+      }
+    } else {
+      this.goteo(f, dt);
+      if (f.tipo === 'activar') {
+        if (this.consolas.length === 0 || this.consolas.every(function (v) { return v >= 1; })) this.completarFase();
+      } else if (f.tipo === 'jefe') {
+        if (!this.jefe || this.jefe.muerto) { m.evento({ t: 'anuncio', texto: 'EL GUARDIAN CAYO', color: 'verde' }); this.completarFase(); }
+      } else if (f.tipo === 'resistir') {
+        this.restante -= dt;
+        if (this.restante <= 0) { this.restante = 0; this.completarFase(); }
+      } else if (f.tipo === 'salida') {
+        const lista = listaJugadores(m);
+        let dentro = 0;
+        for (const j of lista) if (j.estado === 'vivo' && m.mapa.enSalida(j.piso, j.x, j.y)) dentro++;
+        this.enSalida = dentro;
+        if (lista.length && dentro === lista.length) { this.completarFase(); return; }
+        if (f.limite) {
+          this.restante -= dt;
+          if (this.restante <= 0) { this.restante = 0; m.evento({ t: 'anuncio', texto: 'SE ACABO EL TIEMPO', color: 'magenta' }); this.terminar('derrota'); return; }
+        }
+      }
+    }
+    if (!this.terminado) this.pasoCaidos(dt);
+  };
+  Campana.prototype.terminar = function (res) {
+    if (this.terminado) return;
+    this.terminado = true; this.resultado = res;
+    this.mundo.evento({ t: 'fin', resultado: res, nivel: this.nivel.id });
+  };
+  Campana.prototype.estado = function () {
+    const m = this.mundo, f = this.faseActual();
+    const quedan = m.enemigos.filter(function (e) { return !e.muerto; }).length + this.cola.length;
+    return {
+      modo: 'campana', nivel: this.nivel.id, n: this.nivel.n, fase: this.fase + 1, fases: this.fases.length,
+      tipo: f ? f.tipo : 'intro', texto: f ? f.texto : this.nivel.intro,
+      oleada: this.oleada, total: this.total, quedan: quedan, pausa: this.tPausa, vidas: this.vidas,
+      consolas: this.consolas.map(function (v) { return Math.floor(v * 100) / 100; }),
+      restante: this.restante, salida: this.salidaActiva(), enSalida: this.enSalida, jugadores: listaJugadores(m).length,
+      jefe: this.jefe && !this.jefe.muerto ? Math.max(0, this.jefe.vida / this.jefe.vidaMax) : (this.jefe ? 0 : -1),
+      fin: this.terminado ? this.resultado : null
+    };
   };
 
   // =====================================================
@@ -286,5 +466,5 @@
     };
   };
 
-  DM.Reglas = { Coop: Coop, Versus: Versus, puntoAparicion: puntoAparicion };
+  DM.Reglas = { Coop: Coop, Campana: Campana, Versus: Versus, puntoAparicion: puntoAparicion };
 })();

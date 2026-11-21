@@ -149,6 +149,18 @@
       if (tr.fase === 2 && (tr.car === 'x' || tr.car === 'l')) L.agregar(tr.piso, cx, cy, 1.6, tr.car === 'x' ? PAL.cianClaro : PAL.magenta, 0.7);
       if (noquimbo && tr.piso === jugLocal.piso && Math.hypot(cx - jugLocal.x, cy - jugLocal.y) < 7) push({ x: cx, y: cy, z: 0.55, piso: tr.piso, tex: MARCA, alto: 0.3, siempre: true, brillo: true });
     }
+    // Campaña: la salida activa brilla en verde y las consolas encendidas en verde
+    if (mundo.mapa.salidas.length || mundo.mapa.consolas.length) {
+      const st = mundo.estadoRed || mundo.reglas.estado();
+      if (st && st.modo === 'campana') {
+        if (st.salida) for (let k = 0; k < mundo.mapa.salidas.length; k += 2) { const s = mundo.mapa.salidas[k]; L.agregar(s.piso, s.x + 0.5, s.y + 0.5, 2.2, PAL.verde, 0.7 + Math.sin(t * 4) * 0.25); }
+        mundo.mapa.consolas.forEach(function (c, k) {
+          const v = st.consolas ? st.consolas[k] : 0;
+          if (v >= 1) L.agregar(c.piso, c.x + 0.5, c.y + 0.5, 2.4, PAL.verde, 0.9);
+          else if (v > 0 && st.tipo === 'activar') L.agregar(c.piso, c.x + 0.5, c.y + 0.5, 2, PAL.amarilloClaro, 0.5 + v);
+        });
+      }
+    }
     // Partículas y explosiones
     for (const p of particulas) push({ x: p.x, y: p.y, z: p.z, piso: p.piso, tex: p.tex, alto: p.alto, brillo: true });
     for (const ex of explosiones) {

@@ -1,4 +1,4 @@
-# DuMulti v1.0
+# DuMulti v1.1
 
 Shooter en primera persona multijugador (hasta 8 jugadores) en el universo de **Worodorox 3073**, con estética 32 bits "Alarma neón". Corre en el navegador (PC y celular) y como APK de Android.
 
@@ -6,7 +6,7 @@ Shooter en primera persona multijugador (hasta 8 jugadores) en el universo de **
 
 1. Descomprime el `.zip`.
 2. **Doble clic en `index.html`** (Chrome o Edge recomendados).
-3. JUGAR SOLO → COOPERATIVO o PRÁCTICA, o MULTIJUGADOR → CREAR SALA / UNIRSE.
+3. JUGAR SOLO → CAMPAÑA, SUPERVIVENCIA o PRÁCTICA, o MULTIJUGADOR → CREAR SALA / UNIRSE.
 
 > Para el **multijugador por internet** el juego debe estar publicado (GitHub Pages, ver `docs/GITHUB-PAGES.md`) o servido con un servidor local (VS Code → extensión *Live Server* → clic derecho en `index.html` → *Open with Live Server*). Con doble clic funciona todo el juego solo; la red puede no conectar desde un archivo local.
 
@@ -27,14 +27,24 @@ El anfitrión (idealmente en un PC con buena conexión) crea la sala y comparte 
 | Lanzable / elegir lanzable | G o clic derecho / X | LANZAR / ↻ |
 | Mapa | Q | MAPA |
 | Recargar | R (también automática) | automática |
-| Usar, leer, revivir | E (mantener para revivir o sostener un interruptor) | USAR |
+| Usar, leer, revivir | E (mantener para revivir, sostener un interruptor o activar una consola) | USAR |
 | Marcador | Tab | TAB |
 | Pausa / silencio | Esc / M | II / ♫ |
 | FPS / calidad | P / C | — |
 
 ## Qué incluye
 
-- **Oleadas** "Sector 1 - Bloque criogénico" (solo o cooperativo) (24×24, 2 pisos): 8 oleadas desde las cápsulas hacia la sala central, robot guardián al final, caer y revivir, estaciones de respaldo, 3 reimpresiones del equipo, premios en momentos clave y el desintegrador en la oleada final.
+- **Campaña de 5 sectores** (solo o cooperativo, se guarda el avance): cada sector se desbloquea al superar el anterior.
+  | Sector | Mapa | Objetivos |
+  |---|---|---|
+  | 1 Bloque criogénico | `sector4.js` | 4 oleadas → llegar a la escotilla del reactor |
+  | 2 Pasarelas industriales | `pasarelas.js` | activar 3 consolas (una en el piso 2) → volver al montacargas |
+  | 3 Laboratorios de seguridad | `laboratorios.js` | 5 oleadas con drones → llegar a la esclusa |
+  | 4 Núcleo del reactor | `reactor.js` | derrotar al robot guardián |
+  | 5 Hangar | `hangar.js` | encender la nave en la torre → resistir 60 s → subir en 45 s |
+
+  Las consolas se activan manteniendo USAR; una flecha arriba de la pantalla apunta al objetivo y el MAPA lo marca. En multijugador el anfitrión elige el sector entre los que él ya desbloqueó; al ganar, todos guardan el avance.
+- **Supervivencia** "Sector 1 - Bloque criogénico" (solo o cooperativo) (24×24, 2 pisos): 8 oleadas desde las cápsulas hacia la sala central, robot guardián al final, caer y revivir, estaciones de respaldo, 3 reimpresiones del equipo, premios en momentos clave y el desintegrador en la oleada final.
 - **Versus** "Sala del reactor" (24×24, 2 pisos, simétrica): todos contra todos o por equipos Cian/Amarillo, fuego amigo (no / sí / solo explosivos), bajas y tiempo, muerte súbita, puntaje completo, disponibilidad de cada arma, objeto, premio, enemigo y trampa, configuraciones rápidas y una propia guardada.
 - **8 personajes** con puños, arma de contacto, arma a distancia y ventaja propias.
 - **7 armas pesadas + desintegrador**, **5 lanzables**, **5 enemigos**, **9 tipos de trampas** e interruptores de sala.
@@ -52,8 +62,10 @@ Para el APK, la música también tiene que quedar en `android/app/src/main/asset
 ```
 js/
 ├── config.js            constantes, paleta, códigos de casillas
-├── datos/               personajes, armas, enemigos y objetos, registros, configuración de partida
-├── mapas/               sector4.js (cooperativo), reactor.js (versus)
+├── datos/               personajes, armas, enemigos y objetos, registros, configuración de partida,
+│                        campana.js (los 5 sectores y el progreso guardado)
+├── mapas/               sector4.js, pasarelas.js, laboratorios.js, hangar.js (campaña y cooperativo),
+│                        reactor.js (versus y sector 4)
 ├── sim/                 SIMULACIÓN PURA (sin DOM): mapa, jugador, combate, enemigos,
 │                        trampas, objetos, reglas de cada modo, mundo
 ├── red/                 transporte (PeerJS / BroadcastChannel), instantáneas, sala y sincronización
@@ -72,9 +84,11 @@ js/
 
 - **Nombres de personajes:** `js/datos/personajes.js`.
 - **Daño, alcance y cadencia:** `js/datos/armas.js` y `js/datos/enemigos.js`.
-- **Oleadas y configuraciones rápidas:** `js/datos/partida.js`.
+- **Oleadas de supervivencia y configuraciones rápidas:** `js/datos/partida.js`.
+- **Campaña (fases, oleadas, enemigos que siguen llegando, premios, tiempos):** `js/datos/campana.js`.
 - **Textos de los registros:** `js/datos/registros.js`.
-- **Mapas:** `js/mapas/*.js` (la leyenda está al inicio de `sector4.js`). Después de cambiarlos, valida con `npm run validar` (o desde el panel NPM SCRIPTS de VS Code).
+- **Mapas:** `js/mapas/*.js` (la leyenda está al inicio de `sector4.js`). Después de cambiarlos, valida con `npm run validar` (o desde el panel NPM SCRIPTS de VS Code). Para comprobar que los 5 sectores se pueden terminar: `npm run probar`.
+- **Borrar el avance de la campaña:** en la consola (F12) `DM.Progreso.borrar()`.
 
 ## Android y publicación
 
@@ -87,6 +101,8 @@ js/
 DM.juego.ir(1, 12.5, 12.5, 0)    // piso, x, y, ángulo
 DM.juego.mundo.aparecerEnemigo('guardian')
 DM.raycaster.calidad = 'media'
+DM.juego.A.soloCampana('s5')     // ir directo a un sector
+DM.Progreso.borrar()             // volver a bloquear la campaña
 ```
 
 ## Límites conocidos

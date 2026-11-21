@@ -58,7 +58,7 @@
         case 'recoger': if (e.id === jug.id) { HUD.tRecoger = 0.25; HUD.mostrar(nombreObjeto(e.tipo), 1.5); } break;
         case 'baja': HUD.baja(e.texto); break;
         case 'anuncio': HUD.anunciar(e.texto, e.color); break;
-        case 'oleada': HUD.anunciar(e.final ? 'OLEADA FINAL: EL GUARDIAN DESPERTO' : 'OLEADA ' + e.n + ' DE ' + e.total, e.final ? 'rojo' : 'amarillo'); break;
+        case 'oleada': HUD.anunciar(e.final ? 'OLEADA FINAL: EL GUARDIAN DESPERTO' : e.ultima ? 'ULTIMA OLEADA' : 'OLEADA ' + e.n + ' DE ' + e.total, e.final ? 'rojo' : 'amarillo'); break;
         case 'sinMunicion': if (e.id === jug.id) HUD.mostrar('SIN MUNICION', 1.5); break;
         case 'revivido': HUD.anunciar((mundo.jugadores[e.id] || {}).nombre + ' VOLVIO A LA PELEA', 'verde'); break;
         case 'piso': if (e.id === jug.id) HUD.anunciarPiso(mundo.mapa.pisos[e.piso].nombre); break;
@@ -165,7 +165,7 @@
     // Aviso [E] y barra de revivir
     if (aviso && jug.estado === 'vivo' && !HUD.lectura) {
       TXT.textoConCaja(ctx, (tactil ? 'USAR: ' : '[E] ') + aviso.texto, cx, cy + 22, PAL.cianClaro, PAL.cian);
-      if (aviso.accion === 'revivir') {
+      if (aviso.accion === 'revivir' || (aviso.accion === 'consola' && aviso.progreso > 0 && aviso.progreso < 1)) {
         ctx.fillStyle = '#16151f'; ctx.fillRect(cx - 40, cy + 34, 80, 4);
         ctx.fillStyle = PAL.verde; ctx.fillRect(cx - 40, cy + 34, Math.round(80 * (aviso.progreso || 0)), 4);
       }
@@ -174,7 +174,9 @@
     const st = estadoReglas(mundo);
     if (st) {
       let txt = '';
-      if (st.modo === 'coop') {
+      if (st.modo === 'campana') {
+        txt = campanaTexto(st, mundo);
+      } else if (st.modo === 'coop') {
         txt = st.oleada ? 'OLEADA ' + st.oleada + '/' + st.total + '   QUEDAN ' + st.quedan : 'PREPARENSE';
         if (st.pausa !== null && st.pausa !== undefined && st.pausa > 0) txt = 'SIGUIENTE OLEADA EN ' + Math.ceil(st.pausa);
         txt += '   REIMPRESIONES ' + st.vidas;
@@ -192,6 +194,7 @@
       }
       ctx.fillStyle = 'rgba(7,6,13,0.6)'; const w = DM.fuente.ancho(txt) + 10; ctx.fillRect(cx - w / 2, 2, w, 10);
       TXT.texto(ctx, txt, cx, 4, st.subita ? PAL.magenta : PAL.blanco, 1, 'centro');
+      if (st.modo === 'campana') campanaVista(ctx, st, mundo, jug, cam, t);
     }
     // Registro de bajas (arriba a la derecha)
     let y = 16;
@@ -232,6 +235,65 @@
     if (es.tDestello > 0) { ctx.fillStyle = 'rgba(77,255,138,' + (es.tDestello * 1.2).toFixed(3) + ')'; ctx.fillRect(0, 0, A, VH); }
     if (HUD.tablero) tablero(ctx, mundo, jug);
   };
+
+  // ---------- Campaña ----------
+  function reloj(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function campanaTexto(st) {
+    let txt = 'SECTOR ' + st.n + '   ';
+    switch (st.tipo) {
+      case 'intro': txt += 'PREPARENSE'; break;
+      case 'oleadas':
+        txt += st.oleada ? 'OLEADA ' + st.oleada + '/' + st.total + '   QUEDAN ' + st.quedan : 'PREPARENSE';
+        if (st.pausa !== null && st.pausa !== undefined && st.pausa > 0) txt = 'SECTOR ' + st.n + '   SIGUIENTE OLEADA EN ' + Math.ceil(st.pausa);
+        break;
+      case 'activar': txt += 'CONSOLAS ' + st.consolas.filter(function (v) { return v >= 1; }).length + '/' + st.consolas.length; break;
+      case 'jefe': txt += 'JEFE'; break;
+      case 'resistir': txt += 'RESISTAN ' + reloj(st.restante); break;
+      case 'salida': txt += 'EN LA SALIDA ' + st.enSalida + '/' + st.jugadores + (st.restante >= 0 ? '   ' + reloj(st.restante) : ''); break;
+    }
+    return txt + '   REIMPRESIONES ' + st.vidas;
+  }
+  // Objetivo, barra del jefe, flecha hacia el objetivo y presentación del sector
+  function campanaVista(ctx, st, mundo, jug, cam, t) {
+    const cx = A / 2;
+    const nivel = DM.CAMPANA_POR_ID[st.nivel];
+    if (st.tipo === 'intro') {
+      DM.UI.panel(ctx, 70, 40, 340, 62, PAL.cian);
+      TXT.texto(ctx, nivel.nombre, cx, 47, PAL.cianClaro, 1, 'centro');
+      TXT.parrafo(ctx, nivel.intro, cx, 62, 320, PAL.blanco, 'centro', 10);
+      TXT.texto(ctx, 'EMPIEZA EN ' + Math.max(1, Math.ceil(st.pausa || 0)), cx, 92, PAL.amarilloClaro, 1, 'centro');
+      return;
+    }
+    if (HUD.tPiso <= 0) TXT.texto(ctx, st.texto, cx, 15, PAL.amarilloClaro, 1, 'centro');
+    // Barra del jefe
+    if (st.tipo === 'jefe' && st.jefe >= 0) {
+      ctx.fillStyle = 'rgba(7,6,13,0.7)'; ctx.fillRect(cx - 82, 25, 164, 12);
+      ctx.fillStyle = '#3a0a10'; ctx.fillRect(cx - 80, 31, 160, 4);
+      ctx.fillStyle = PAL.rojo; ctx.fillRect(cx - 80, 31, Math.round(160 * st.jefe), 4);
+      TXT.texto(ctx, 'ROBOT GUARDIAN', cx, 25, PAL.rojo, 1, 'centro');
+    }
+    // Flecha hacia el objetivo más cercano (consola pendiente o salida)
+    let puntos = [];
+    if (st.tipo === 'activar') puntos = mundo.mapa.consolas.filter(function (c, k) { return st.consolas[k] < 1; }).map(function (c) { return { piso: c.piso, x: c.x + 0.5, y: c.y + 0.5 }; });
+    if (st.tipo === 'salida') puntos = mundo.mapa.salidas.map(function (c) { return { piso: c.piso, x: c.x + 0.5, y: c.y + 0.5 }; });
+    if (!puntos.length || jug.estado !== 'vivo') return;
+    let mejor = null, md = 1e9;
+    for (const p of puntos) { const d = Math.hypot(p.x - jug.x, p.y - jug.y) + (p.piso !== jug.piso ? 40 : 0); if (d < md) { md = d; mejor = p; } }
+    if (mejor.piso !== jug.piso) { TXT.textoConCaja(ctx, 'OBJETIVO EN EL ' + mundo.mapa.pisos[mejor.piso].nombre.split(' - ')[0], cx, 26, PAL.amarilloClaro, PAL.amarillo); return; }
+    const d = Math.hypot(mejor.x - jug.x, mejor.y - jug.y);
+    if (d < 1.2) return;
+    const rel = Math.atan2(mejor.y - jug.y, mejor.x - jug.x) - cam.ang;
+    const ax = cx, ay = 34, sx = Math.sin(rel), sy = -Math.cos(rel);
+    ctx.fillStyle = Math.floor(t * 3) % 2 ? PAL.amarilloClaro : PAL.amarillo;
+    for (let q = 0; q < 9; q++) ctx.fillRect(Math.round(ax + sx * q) - 1, Math.round(ay + sy * q) - 1, 2, 2);
+    for (let q = 1; q < 5; q++) {
+      for (const lado of [-1, 1]) {
+        const bx = ax + sx * (8 - q) + lado * sy * q * -1, by = ay + sy * (8 - q) + lado * -sx * q * -1;
+        ctx.fillRect(Math.round(bx) - 1, Math.round(by) - 1, 2, 2);
+      }
+    }
+    TXT.texto(ctx, Math.round(d) + ' M', cx + 14, ay - 2, PAL.gris);
+  }
 
   // Marcador (tecla Tab)
   function tablero(ctx, mundo, jug) {

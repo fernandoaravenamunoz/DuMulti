@@ -56,10 +56,11 @@
     R.rol = 'anfitrion'; R.miId = 'h'; R.error = ''; R.estado = 'CREANDO SALA...';
     R.codigo = String(1000 + Math.floor(Math.random() * 9000));
     R.sala = {
-      codigo: R.codigo, modo: 'coop', mapa: 'sector4',
+      codigo: R.codigo, modo: 'campana', nivel: DM.Progreso.pendiente(), mapa: 'sector4',
       versus: cargarConfigVersus(), coop: DM.Partida.coopBase(),
       jugadores: [{ id: 'h', puesto: 0, personaje: personaje, listo: true, equipo: 0, anfitrion: true }]
     };
+    R.sala.mapa = mapaDeSala(R.sala);
     tr = transporte().anfitrion(CR.PREFIJO + R.codigo, {
       listo: function () { R.estado = ''; if (R.al.sala) R.al.sala(); },
       conexion: function (cid) {
@@ -140,10 +141,15 @@
   R.configurar = function (fn) {
     if (R.rol !== 'anfitrion') return;
     fn(R.sala);
-    R.sala.mapa = R.sala.modo === 'coop' ? 'sector4' : 'reactor';
+    R.sala.mapa = mapaDeSala(R.sala);
     guardarConfigVersus(R.sala.versus);
     difundirSala();
   };
+  // Modos de la sala: 'campana' (sector elegido), 'coop' (oleadas del sector 1) y 'versus'
+  function mapaDeSala(s) {
+    if (s.modo === 'campana') return (DM.CAMPANA_POR_ID[s.nivel] || DM.CAMPANA[0]).mapa;
+    return s.modo === 'coop' ? 'sector4' : 'reactor';
+  }
   R.todosListos = function () { return R.sala && R.sala.jugadores.every(function (j) { return j.listo; }); };
 
   function cargarConfigVersus() {
@@ -189,8 +195,9 @@
     if (R.rol !== 'anfitrion') return null;
     const s = R.sala;
     const datos = {
-      t: 'inicio', modo: s.modo, mapa: s.mapa, semilla: (Math.random() * 1e9) | 0,
-      conf: DM.Partida.copiar(s.modo === 'coop' ? s.coop : s.versus),
+      t: 'inicio', modo: s.modo === 'versus' ? 'versus' : 'coop', mapa: mapaDeSala(s), semilla: (Math.random() * 1e9) | 0,
+      nivel: s.modo === 'campana' ? s.nivel : null,
+      conf: DM.Partida.copiar(s.modo === 'versus' ? s.versus : s.coop),
       jugadores: s.jugadores.map(function (j) { return { id: j.id, puesto: j.puesto, personaje: j.personaje, equipo: j.equipo }; })
     };
     R.enPartida = true;

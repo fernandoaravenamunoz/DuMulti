@@ -782,6 +782,54 @@
   };
   Object.assign(ID, ID2);
 
+
+  // ---------- Campaña: consola de objetivo, casco de la nave y zona de salida ----------
+  function texConsola(on, cuadro) {
+    const L = new Lienzo(); panelBase(L, azar(600));
+    L.rect(6, 6, 52, 40, '#0b0a12'); L.rect(6, 6, 52, 1, '#4a4f63');
+    L.grad(8, 8, 48, 36, on ? '#04200e' : '#200406', '#020a04', true, 1);
+    const col = on ? PAL.verde : PAL.rojo;
+    L.rect(8, 8, 48, 8, on ? '#1d6b3a' : PAL.rojoOsc, 1);
+    L.texto(on ? 'EN LINEA' : 'SIN ENERGIA', 10, 10, on ? '#c8ffd8' : '#ffd0d0', 1);
+    for (let k = 0; k < 5; k++) L.rect(10, 20 + k * 4, on ? 40 : 8 + ((k * 11 + cuadro * 7) % 30), 2, col, 1);
+    // Palanca y luz grande
+    L.rect(20, 48, 24, 12, '#1c1b28'); L.rect(20, 48, 24, 1, '#4a4f63');
+    L.anillo(32, 54, 0, 4, (on || cuadro) ? col : (on ? '#1d6b3a' : PAL.rojoOsc), 1);
+    return L;
+  }
+  function texNave(v) {
+    const L = new Lienzo(); const rnd = azar(610 + v);
+    L.grad(0, 0, T, T, '#8a90a8', '#5a6078', true);
+    for (let y = 0; y < T; y += 16) { L.rect(0, y, T, 1, '#2a2d3c'); L.rect(0, y + 1, T, 1, '#b0b6cc'); }
+    for (let x = 0; x < T; x += 8) L.rect(x, 0, 1, T, '#4a4f63');
+    L.rect(0, 56, T, 3, '#e8b923'); for (let x = 0; x < T; x += 8) L.rect(x, 56, 4, 3, '#16151f');
+    if (v === 0) { L.rect(8, 24, 48, 10, '#0b0a12'); for (let k = 0; k < 5; k++) L.rect(10 + k * 9, 26, 7, 6, '#1d6b7a', 1); }
+    else { L.rect(0, 40, T, 4, PAL.cian, 1); L.rect(0, 41, T, 1, PAL.cianClaro, 1); L.texto('T-01', 22, 14, PAL.amarilloClaro, 1); }
+    L.ruido(rnd, 0.04);
+    return L;
+  }
+  function texSalida(on, cuadro) {
+    const L = new Lienzo();
+    L.rect(0, 0, T, T, '#0d1410');
+    franjas(L, 0, 0, T, 4, on ? PAL.verde : '#2a3a2a', '#0b0a12', 4, on);
+    franjas(L, 0, 60, T, 4, on ? PAL.verde : '#2a3a2a', '#0b0a12', 4, on);
+    if (on) {
+      for (let k = 0; k < 3; k++) {
+        const y0 = 10 + k * 16 + (cuadro ? 4 : 0) - (k === 2 && cuadro ? 48 : 0);
+        for (let j = 0; j < 8; j++) L.rect(32 - j, y0 + j, j * 2 + 1, 1, k === 1 ? '#c8ffd8' : PAL.verde, 1);
+      }
+      L.trama(4, 4, 56, 56, '#1d6b3a', 1);
+    } else {
+      for (let k = 0; k < 18; k++) { L.rect(23 + k, 23 + k, 2, 2, PAL.rojoOsc); L.rect(41 - k, 23 + k, 2, 2, PAL.rojoOsc); }
+    }
+    return L;
+  }
+  Object.assign(ID, {
+    consola: [registrar([texConsola(false, 0), texConsola(false, 1)], 2), registrar(texConsola(true, 0))],
+    nave: [registrar(texNave(0)), registrar(texNave(1))],
+    salida: [registrar(texSalida(false, 0)), registrar([texSalida(true, 0), texSalida(true, 1)], 4)]
+  });
+
   // Variante "estable" por casilla (para que no se repita la misma textura en fila)
   function hash(x, y) { return ((x * 73856093) ^ (y * 19349663)) >>> 0; }
 
@@ -804,6 +852,8 @@
       case P.SECUENCIA: return ID.secuencia;
       case P.APLASTADOR: return ID.aplastador;
       case P.REACTOR: return ID.reactor;
+      case P.CONSOLA: return ID.consola[0];
+      case P.NAVE: return ID.nave[hash(x, y) % 2];
       default: return ID.danada[0];
     }
   }
@@ -817,6 +867,7 @@
       case S.ASCENSOR: return ID.plataforma;
       case S.ESTACION: return ID.estacion;
       case S.CRIO: return ID.crio;
+      case S.SALIDA: return ID.salida[0];
       default: return ID.piso;
     }
   }

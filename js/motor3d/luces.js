@@ -28,6 +28,8 @@
   EMISORES[P.ASCENSOR] = { col: rgb('#22e4ff', 0.45), radio: 1.8, canal: 0 };
   EMISORES[P.TERMINAL] = { col: rgb('#ff3b3b', 0.7), radio: 2.4, canal: 0 };
   EMISORES[P.REACTOR] = { col: rgb('#22e4ff', 1.6), radio: 4.5, canal: 2 };
+  EMISORES[P.CONSOLA] = { col: rgb('#ff3b3b', 0.6), radio: 2.2, canal: 0 };
+  EMISORES[P.NAVE] = { col: rgb('#9fe8f5', 0.45), radio: 2.0, canal: 0 };
   EMISORES[P.INTERRUPTOR] = { col: rgb('#ff2bd6', 0.5), radio: 1.6, canal: 0 };
   const PLASMA = { col: rgb('#ff2bd6', 1.9), radio: 3.4, canal: 2 };
   const ESTACION = { col: rgb('#4dff8a', 0.9), radio: 2.4, canal: 0 };
